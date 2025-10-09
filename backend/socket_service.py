@@ -1,7 +1,7 @@
 # socket_service.py
 from flask_socketio import emit, join_room as socketio_join_room, leave_room
 import os
-from transcribe import transcribe_audio_faster_whisper as transcribe_audio
+from transcribe import transcribe_audio
 from flask import request
 from session_manager import session_manager
 from room_service import rooms, lock
@@ -111,15 +111,11 @@ def handle_join(data):
             emit("error", {"msg": "Room not found"})
             return
     
-    # Check if this user is the creator (by IP or session)
+    # Check if this user is the creator by session ID only
     is_creator = False
     with lock:
         if rooms[room_code].get("creator_sid") == sid:
             is_creator = True
-        elif rooms[room_code].get("creator_ip") == ip_address:
-            is_creator = True
-            # Update creator_sid
-            rooms[room_code]["creator_sid"] = sid
     
     # Update session data
     role = "creator" if is_creator else "listener"
