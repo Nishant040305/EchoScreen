@@ -39,7 +39,7 @@ def transcribe_audio_faster_whisper(
         return ""
 
 def transcribe_audio(file_path: str, language: str = None) -> str:
-    return transcribe_audio_faster_whisper(file_path, language=language)
+    return transcribe_audio_assembly(file_path, language=language)
 
 def transcribe_audio_assembly(file_path: str = None, audio_url: str = None, language: str = None) -> str:
     """

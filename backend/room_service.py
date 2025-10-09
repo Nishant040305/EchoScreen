@@ -13,7 +13,8 @@ def generate_room_code(length=4):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 def create_room():
-    # Get session ID
+    # Get client IP and session ID
+    ip_address = request.remote_addr
     sid = request.cookies.get('session_id')
     
     with lock:
@@ -25,19 +26,20 @@ def create_room():
             "created_at": datetime.utcnow().isoformat(),
             "participants": 0,
             "creator_sid": sid,
+            "creator_ip": ip_address,
             "listeners": set()
         }
         
         # Update session data if we have a session ID
-    if sid:
-        session_manager.update_session(
-            sid, 
-            room=code, 
-            is_creator=True,
-            user_data={"role": "creator"}
-        )
+        if sid:
+            session_manager.update_session(
+                sid, 
+                room=code, 
+                is_creator=True,
+                user_data={"role": "creator"}
+            )
     
-    print(f"[ROOM] Created room: {code} by {sid}")
+    print(f"[ROOM] Created room: {code} by {sid} ({ip_address})")
     return jsonify({"room_code": code, "created_at": rooms[code]["created_at"]})
 
 def join_room_api():
@@ -45,15 +47,21 @@ def join_room_api():
     if not code:
         return jsonify({"status": "error", "message": "Room code required"}), 400
     
-    # Get session ID
+    # Get client IP and session ID
+    ip_address = request.remote_addr
     sid = request.cookies.get('session_id')
     
     with lock:
         if code in rooms:
-            # Check if this user is the creator by session ID only
+            # Check if this user is the creator (by IP or session)
             is_creator = False
             if sid and rooms[code].get("creator_sid") == sid:
                 is_creator = True
+            elif ip_address and rooms[code].get("creator_ip") == ip_address:
+                is_creator = True
+                # Update creator_sid if we have a new one
+                if sid and not rooms[code].get("creator_sid"):
+                    rooms[code]["creator_sid"] = sid
             
             # Update session data if we have a session ID
             if sid:
