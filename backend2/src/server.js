@@ -34,7 +34,9 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send("Internal Server error");
 });
-
+app.use("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Server and Socket.io are running on port ${PORT}`);
