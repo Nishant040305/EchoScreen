@@ -100,14 +100,14 @@ void moveRight() {
 }
 
 // --- Append selected character ---
-void appendCharToCode() {
+void appendCharToCode(int digits = 4) {
   if (codeComplete) return;
   
   dig4code += characters[pos];
   drawCharacterGrid();
   highlightCursor();
   
-  if (dig4code.length() >= 4) {
+  if (dig4code.length() >= digits) {
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Code complete!");
@@ -123,24 +123,36 @@ void appendCharToCode() {
 // --- Handle buttons ---
 bool handleCodeInput(String& code,int digits = 4) {
   int b1 = digitalRead(BTN1); // select/enter
-  int b2 = digitalRead(BTN2); // left
-  int b3 = digitalRead(BTN3); // right
-  
+  int b2 = digitalRead(BTN2); // clear
+  int b3 = digitalRead(BTN3); // left
+  int b4 = digitalRead(BTN4); // right
   if (b1 == LOW) {
     if (!codeFormed) formCode();
-    else appendCharToCode();
+    else appendCharToCode(digits);
     delay(300);
   }
   
   if (b2 == LOW && codeFormed && !codeComplete) {
-    moveLeft();
+    if(dig4code.length()>0){
+      String c = "";
+      for(int i = 0;i<dig4code.length()-1;i++){
+        c+=dig4code[i];
+      }
+      dig4code = c;
+    }
     delay(150);
   }
   
   if (b3 == LOW && codeFormed && !codeComplete) {
+    moveLeft();
+    delay(150);
+  }
+
+  if (b4 == LOW && codeFormed && !codeComplete) {
     moveRight();
     delay(150);
   }
+
   
   if (codeFormed && !codeComplete) {
     highlightCursor();
