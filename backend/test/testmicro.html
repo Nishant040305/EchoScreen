@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <button onclick="start()">🎙️ Start</button>
+    <button onclick="stop()">⏹️ Stop</button>
+    <script>
+        let recorder;
+        let audioChunks = [];
+
+        async function start() {
+            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+            recorder = new MediaRecorder(stream);
+            recorder.ondataavailable = e => audioChunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(audioChunks, {type: 'audio/wav'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'test.wav';
+                a.click();
+            };
+            recorder.start();
+        }
+
+        function stop() {
+            recorder.stop();
+        }
+    </script>
+</body>
+</html>

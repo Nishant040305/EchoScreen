@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morse Chat Test Interface</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .room-info {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #ccc;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .message.transcription {
+            background: #e3f2fd;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        function App() {
+            const [socket, setSocket] = React.useState(null);
+            const [userId, setUserId] = React.useState(null);
+            const [roomId, setRoomId] = React.useState(null);
+            const [isCreator, setIsCreator] = React.useState(false);
+            const [messages, setMessages] = React.useState([]);
+            const [isRecording, setIsRecording] = React.useState(false);
+            const [mediaRecorder, setMediaRecorder] = React.useState(null);
+
+            React.useEffect(() => {
+                // Connect to socket.io server
+                const newSocket = io('https://esp-32-morse-based-chat-application.onrender.com');
+                setSocket(newSocket);
+
+                newSocket.on('userId', (id) => {
+                    setUserId(id);
+                });
+
+                newSocket.on('roomId', (id) => {
+                    setRoomId(id);
+                    setIsCreator(true);
+                });
+
+                newSocket.on('audioTranscription', (data) => {
+                    setMessages(prev => [...prev, {
+                        type: 'transcription',
+                        text: data,
+                        // utterances: data.utterances
+                    }]);
+                });
+
+                newSocket.emit('connectUser');
+
+                return () => newSocket.close();
+            }, []);
+
+            const createRoom = () => {
+                socket.emit('createRoom', userId);
+            };
+
+            const joinRoom = () => {
+                const roomToJoin = prompt('Enter room ID:');
+                if (roomToJoin) {
+                    socket.emit('joinRoom', { roomId: roomToJoin, userId });
+                    setRoomId(roomToJoin);
+                }
+            };
+
+            const startRecording = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const recorder = new MediaRecorder(stream);
+                    const audioChunks = [];
+
+                    recorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    recorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
+                        
+                        // Convert to base64 for transmission
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            socket.emit('audioTranscription', {
+                                roomId,
+                                userId,
+                                audioFile: reader.result
+                            });
+                        };
+                        reader.readAsDataURL(audioFile);
+                    };
+
+                    recorder.start();
+                    setMediaRecorder(recorder);
+                    setIsRecording(true);
+                } catch (error) {
+                    console.error('Error accessing microphone:', error);
+                    alert('Error accessing microphone');
+                }
+            };
+
+            const stopRecording = () => {
+                if (mediaRecorder && isRecording) {
+                    mediaRecorder.stop();
+                    setIsRecording(false);
+                    setMediaRecorder(null);
+                }
+            };
+
+            return (
+                <div className="container">
+                    <div className="room-info">
+                        <h2>Morse Chat Test Interface</h2>
+                        <p>Your ID: {userId || 'Connecting...'}</p>
+                        <p>Room ID: {roomId || 'Not in a room'}</p>
+                        <p>Role: {isCreator ? 'Creator' : 'Participant'}</p>
+                    </div>
+
+                    <div className="controls">
+                        {!roomId && (
+                            <div className="button-group">
+                                <button onClick={createRoom}>Create Room</button>
+                                <button onClick={joinRoom}>Join Room</button>
+                            </div>
+                        )}
+                        
+                        {roomId && isCreator && (
+                            <button 
+                                onClick={isRecording ? stopRecording : startRecording}
+                                style={{ background: isRecording ? '#dc3545' : '#007bff' }}
+                            >
+                                {isRecording ? 'Stop Recording' : 'Start Recording'}
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="messages">
+                        {messages.map((msg, index) => (
+                            <div key={index} className={`message ${msg.type}`}>
+                                <p><strong>Transcription:</strong> {msg.text}</p>
+                                {msg.utterances && msg.utterances.map((utterance, i) => (
+                                    <p key={i}><strong>Speaker {utterance.speaker}:</strong> {utterance.text}</p>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

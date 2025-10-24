@@ -6,235 +6,7 @@
     <title>Live Transcription Test</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --creator-color: #4299e1;
-            --listener-color: #68d391;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        h1 {
-            color: white;
-            margin-bottom: 24px;
-            text-align: center;
-            font-size: 32px;
-        }
-        
-        h2 {
-            color: #333;
-            margin-bottom: 16px;
-            font-size: 20px;
-        }
-        
-        .input-group {
-            margin-bottom: 16px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 500;
-        }
-        
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        button {
-            padding: 12px 24px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s;
-            margin-right: 8px;
-        }
-        
-        button:hover {
-            background: #5568d3;
-        }
-        
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        
-        button.secondary {
-            background: #48bb78;
-        }
-        
-        button.secondary:hover {
-            background: #38a169;
-        }
-        
-        button.danger {
-            background: #f56565;
-        }
-        
-        button.danger:hover {
-            background: #e53e3e;
-        }
-        
-        .status {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-weight: 500;
-        }
-        
-        .status.connected {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-        
-        .status.disconnected {
-            background: #fed7d7;
-            color: #742a2a;
-        }
-        
-        .status.in-room {
-            background: #bee3f8;
-            color: #2c5282;
-        }
-        
-        #transcriptions {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 16px;
-            background: #f7fafc;
-        }
-        
-        .transcription-item {
-            background: white;
-            padding: 12px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-        }
-        
-        .transcription-item.creator {
-            border-left: 4px solid var(--creator-color);
-        }
-        
-        .transcription-item.listener {
-            border-left: 4px solid var(--listener-color);
-        }
-        
-        .system-message {
-            padding: 8px 12px;
-            margin: 8px 0;
-            text-align: center;
-            font-style: italic;
-            color: #718096;
-            background-color: #edf2f7;
-            border-radius: 8px;
-        }
-        
-        .transcription-item .meta {
-            font-size: 12px;
-            color: #718096;
-            margin-bottom: 4px;
-        }
-        
-        .transcription-item .text {
-            color: #2d3748;
-            font-size: 14px;
-        }
-        
-        .recording {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px;
-            background: #fff5f5;
-            border-radius: 8px;
-            margin-bottom: 16px;
-        }
-        
-        .recording-indicator {
-            width: 12px;
-            height: 12px;
-            background: #f56565;
-            border-radius: 50%;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .log-item {
-            padding: 8px;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 13px;
-            color: #4a5568;
-        }
-        
-        #logs {
-            max-height: 200px;
-            overflow-y: auto;
-            background: #f7fafc;
-            border-radius: 8px;
-            padding: 12px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
@@ -268,10 +40,13 @@
             </div>
         </div>
         
-        <div class="card" id="roomSection" class="hidden">
-            <h2>Room: <span id="currentRoom"></span></h2>
+        <div class="card hidden" id="roomSection">
+            <h2>
+                Room: <span id="currentRoom"></span>
+                <span id="roleBadge" class="role-badge"></span>
+            </h2>
             
-            <div class="input-group">
+            <div id="recordingControls" class="input-group">
                 <label>Audio Recording</label>
                 <button id="recordBtn" onclick="startRecording()" class="secondary">🎙️ Start Recording</button>
                 <button id="stopBtn" onclick="stopRecording()" class="danger hidden">⏹️ Stop & Transcribe</button>
@@ -300,8 +75,8 @@
     </div>
 
     <script>
-        const SERVER_URL = 'https://esp-32-morse-based-chat-application.onrender.com';
-        // const SERVER_URL = 'http://localhost:5000';
+        // const SERVER_URL = 'https://esp-32-morse-based-chat-application.onrender.com';
+        const SERVER_URL = 'http://localhost:5000';
         let socket = null;
         let currentRoom = null;
         let mediaRecorder = null;
@@ -347,21 +122,32 @@
             }
         }
         
-        function connectSocket() {
+        async function connectSocket() {
             if (socket && socket.connected) {
                 socket.disconnect();
                 return;
             }
             
-            log('Connecting to server...');
+            if (!sessionId) {
+                log('No session ID found, fetching one...');
+                await fetchSessionId();
+            }
+            
+            if (!sessionId) {
+                log('Failed to get session ID. Cannot connect.', 'error');
+                alert('Could not establish a session with the server. Please refresh the page and try again.');
+                return;
+            }
+            
+            log('Connecting to server with session ID...');
             socket = io(SERVER_URL, {
                 withCredentials: true,
-                reconnection: true,           // Enable automatic reconnection
-                reconnectionAttempts: 10,     // Try to reconnect 10 times
-                reconnectionDelay: 1000,      // Start with 1s delay
-                reconnectionDelayMax: 5000,   // Maximum 5s delay between attempts
-                timeout: 20000,              // Connection timeout
-                autoConnect: true            // Connect automatically
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 20000,
+                autoConnect: true
             });
             
             socket.on('connect', () => {
@@ -374,7 +160,6 @@
                 updateConnectionStatus(false);
             });
             
-            // Add reconnection event handlers
             socket.io.on('reconnect_attempt', (attemptNumber) => {
                 log(`Reconnection attempt ${attemptNumber}...`, 'info');
             });
@@ -382,7 +167,6 @@
             socket.io.on('reconnect', (attemptNumber) => {
                 log(`Reconnected after ${attemptNumber} attempts!`, 'success');
                 
-                // If we were in a room before disconnection, try to rejoin
                 if (currentRoom) {
                     log(`Attempting to rejoin room ${currentRoom}...`);
                     socket.emit('join_room', {room_code: currentRoom});
@@ -403,21 +187,26 @@
             });
             
             socket.on('joined_room', (data) => {
-                log(`Successfully joined room: ${data.room_code}`, 'success');
+                log(`Successfully joined room: ${data.room_code} as ${data.role}`, 'success');
                 currentRoom = data.room_code;
                 userRole = data.role;
+                
+                // Update UI
                 document.getElementById('currentRoom').textContent = currentRoom;
                 document.getElementById('roomSection').classList.remove('hidden');
-                document.getElementById('connectionStatus').textContent = `In Room: ${currentRoom} as ${userRole}`;
+                document.getElementById('connectionStatus').textContent = `In Room: ${currentRoom}`;
                 document.getElementById('connectionStatus').className = 'status in-room';
                 
-                // Show/hide recording controls based on role
-                const recordingControls = document.getElementById('recording-controls');
-                if (userRole === 'creator') {
-                    recordingControls.style.display = 'block';
-                } else {
-                    recordingControls.style.display = 'none';
-                }
+                // Update role badge
+                const roleBadge = document.getElementById('roleBadge');
+                roleBadge.textContent = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+                roleBadge.className = `role-badge ${userRole}`;
+                
+                // Show recording controls for all users (you can modify this logic)
+                const recordingControls = document.getElementById('recordingControls');
+                recordingControls.style.display = 'block';
+                
+                log(`Recording controls are now visible. Role: ${userRole}`);
             });
             
             socket.on('user_joined', (data) => {
@@ -453,11 +242,23 @@
         
         async function createRoom() {
             log('Creating new room...');
+            
+            if (!sessionId) {
+                log('No session ID found, fetching one...');
+                await fetchSessionId();
+                
+                if (!sessionId) {
+                    log('Failed to get session ID. Cannot create room.', 'error');
+                    alert('Could not establish a session with the server. Please refresh the page and try again.');
+                    return;
+                }
+            }
+            
             try {
                 const response = await fetch(`${SERVER_URL}/create_room`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    credentials: 'include' // Include cookies
+                    credentials: 'include'
                 });
                 const data = await response.json();
                 log(`Room created: ${data.room_code}`, 'success');
@@ -465,7 +266,6 @@
                 document.getElementById('createdRoomCode').value = data.room_code;
                 document.getElementById('roomCodeDisplay').classList.remove('hidden');
                 
-                // Auto-join the created room
                 document.getElementById('joinRoomCode').value = data.room_code;
                 joinRoom();
             } catch (error) {
@@ -481,11 +281,22 @@
                 return;
             }
             
+            if (!sessionId) {
+                log('No session ID found, fetching one...');
+                await fetchSessionId();
+                
+                if (!sessionId) {
+                    log('Failed to get session ID. Cannot join room.', 'error');
+                    alert('Could not establish a session with the server. Please refresh the page and try again.');
+                    return;
+                }
+            }
+            
             log(`Checking if room ${roomCode} exists...`);
             
             try {
                 const response = await fetch(`${SERVER_URL}/join_room?code=${roomCode}`, {
-                    credentials: 'include' // Include cookies
+                    credentials: 'include'
                 });
                 const data = await response.json();
                 
@@ -506,6 +317,7 @@
         function leaveRoom() {
             log(`Leaving room ${currentRoom}`);
             currentRoom = null;
+            userRole = null;
             document.getElementById('roomSection').classList.add('hidden');
             document.getElementById('transcriptions').innerHTML = '<p style="color: #718096; text-align: center;">No transcriptions yet. Record audio to start!</p>';
             updateConnectionStatus(true);
@@ -523,15 +335,17 @@
                 
                 mediaRecorder.ondataavailable = (event) => {
                     audioChunks.push(event.data);
+                    log(`Audio chunk received: ${event.data.size} bytes`);
                 };
                 
                 mediaRecorder.onstop = async () => {
                     log('Recording stopped, processing audio...');
                     const audioBlob = new Blob(audioChunks, {type: 'audio/wav'});
+                    log(`Total audio size: ${audioBlob.size} bytes`);
                     await sendAudioForTranscription(audioBlob);
                     
-                    // Stop all tracks
                     stream.getTracks().forEach(track => track.stop());
+                    log('Microphone stream stopped');
                 };
                 
                 mediaRecorder.start();
@@ -543,7 +357,7 @@
                 
             } catch (error) {
                 log(`Failed to access microphone: ${error.message}`, 'error');
-                alert('Could not access microphone. Please grant permission.');
+                alert('Could not access microphone. Please grant permission and ensure you are using HTTPS or localhost.');
             }
         }
         
@@ -572,15 +386,12 @@
                 
                 log(`Sending audio to room ${currentRoom} via socket...`);
                 
-                // Check if socket is connected before sending
                 if (!socket || !socket.connected) {
                     log('Socket disconnected. Attempting to reconnect...', 'warning');
                     
-                    // Try to reconnect if not connected
                     if (socket) {
                         socket.connect();
                         
-                        // Wait for connection to be established
                         await new Promise((resolve) => {
                             const checkConnection = () => {
                                 if (socket.connected) {
@@ -594,7 +405,6 @@
                         
                         log('Reconnected to server', 'success');
                         
-                        // If we were in a room, rejoin it
                         if (currentRoom) {
                             socket.emit('join_room', {room_code: currentRoom});
                             log(`Rejoined room ${currentRoom}`);
@@ -605,14 +415,11 @@
                     }
                 }
                 
-                // Send the audio data with a timeout to handle potential issues
                 const sendPromise = new Promise((resolve, reject) => {
-                    // Set a timeout in case the server doesn't respond
                     const timeout = setTimeout(() => {
                         reject(new Error('Server did not acknowledge audio upload in time'));
-                    }, 10000); // 10 second timeout
+                    }, 10000);
                     
-                    // Listen for the audio_received event
                     const onAudioReceived = (data) => {
                         clearTimeout(timeout);
                         socket.off('audio_received', onAudioReceived);
@@ -621,7 +428,6 @@
                     
                     socket.on('audio_received', onAudioReceived);
                     
-                    // Send the audio data
                     socket.emit('upload_audio', {
                         room_code: currentRoom,
                         filename: `recording_${Date.now()}.wav`,
@@ -641,7 +447,6 @@
         function addTranscription(text, isCreator = false, isMe = false) {
             const container = document.getElementById('transcriptions');
             
-            // Remove placeholder if exists
             if (container.querySelector('p')) {
                 container.innerHTML = '';
             }
@@ -675,9 +480,26 @@
             container.scrollTop = container.scrollHeight;
         }
         
-        // Auto-connect on page load
-        window.onload = () => {
-            log('Page loaded. Click "Connect to Server" to begin.');
+        async function fetchSessionId() {
+            try {
+                log('Fetching session ID from server...');
+                const response = await fetch(`${SERVER_URL}/session`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                sessionId = data.session_id;
+                log(`Session ID obtained: ${sessionId}`, 'success');
+                return sessionId;
+            } catch (error) {
+                log(`Failed to fetch session ID: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        window.onload = async () => {
+            log('Page loaded. Fetching session ID...');
+            await fetchSessionId();
+            log('Click "Connect to Server" to begin.');
         };
     </script>
 </body>
