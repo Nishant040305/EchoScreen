@@ -1,6 +1,5 @@
 //Buttons
 #include <constants.h>
-int status = 0;
 /*
 BTN1 - Button 1
 This button is connected to GPIO 12.
@@ -32,9 +31,11 @@ Pressing this button clears both the buffer and the message.
 #include <vector>
 #include <WiFi.h>
 #include <esp_now.h>
-#include "Interface/showLandingScreen.h"
-#include "ButtonHandlers/handlerButtonMenu.h"
-#include "Interface/setupFindDevice.h"
+#include <showLandingScreen.h>
+#include <handlerButtonMenu.h>
+#include <handlButtonNetworkMenu.h>
+#include <setupFindDevice.h>
+#include <handleCodeInput.h>
 LiquidCrystal lcd(19, 23, 18, 17, 16, 15);
 void setup(){
   lcd.begin(20,4);
@@ -56,21 +57,20 @@ void loop(){
       break;
     case 3: // Network List
       displayNetworks();
-      while ((digitalRead(BTN3) == HIGH) && (digitalRead(BTN4) == HIGH)) {
-        handleScrollButtons();
-        delay(500);
-      }
-      if (digitalRead(BTN3) == LOW) {
-        status = 1;
-      }
+      handleNetworkMenu();
       break;
-
     case 4:
-      lcd.clear();
-      lcd.print("Chat Mode Active");
-      delay(1000);
-      break;
-
+      if(!NetworkSSID){status = 1;}
+      else{
+        NetworkEntry entry = *NetworkSSID;
+        Serial.printf("SSID: %s\n",entry.ssid.c_str());
+        // Serial.printf("SSID: %s\n",entry.mac.c_str());
+        lcd.clear();
+        lcd.print("Press BTN1 for Pass");
+        String code = "";
+        while(handleCodeInput(code,4));
+        status=5;
+      }
     case 5:
       lcd.clear();
       lcd.print("Reserved Mode");

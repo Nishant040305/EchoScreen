@@ -1,6 +1,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
-
+#include<Arduino.h>
+#include<vector>
 /*
 BTN1 - Button 1
 This button is connected to GPIO 12.
@@ -31,4 +32,15 @@ const int BTN1 = 12;
 const int BTN2 = 13;
 const int BTN3 = 14;
 const int BTN4 = 27;
+
+typedef struct NetworkEntry {
+  String ssid;
+  String mac;
+} NetworkEntry;
+
+extern std::vector<NetworkEntry> networkList;
+extern int status;
+extern int displayStart;
+extern int selectedIndex;
+extern NetworkEntry* NetworkSSID;
 #endif

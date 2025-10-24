@@ -1,6 +1,5 @@
 #include<Arduino.h>
 #include<constants.h>
-extern int status;
 bool handlerButtonMenu(){
   if (digitalRead(BTN1) == LOW) {
     status = 1;

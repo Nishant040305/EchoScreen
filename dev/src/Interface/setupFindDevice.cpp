@@ -3,15 +3,8 @@
 #include <LiquidCrystal.h>
 #include <WiFi.h>
 #include<constants.h>
-typedef struct NetworkEntry {
-  String ssid;
-  String mac;
-} NetworkEntry;
 extern LiquidCrystal lcd;  
-std::vector<NetworkEntry> networkList;
-int selectedIndex = 0;
-int displayStart = 0;
-extern int status;
+
 void displayNetworks() {
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -35,7 +28,7 @@ void displayNetworks() {
       lcd.print(entry.substring(0, 18));  // fit into 20 chars with marker
     }
   }
-  delay(1000);
+  delay(500);
 }
 
 void setupFindDevice() {
@@ -78,26 +71,26 @@ void setupFindDevice() {
 
 }
 
-void handleScrollButtons() {
-  if (digitalRead(BTN3) == LOW) {  // Scroll down
-    if (selectedIndex < (int)networkList.size() - 1) {
-      selectedIndex++;
-      if (selectedIndex >= displayStart + 3) {
-        displayStart++;
-      }
-      displayNetworks();
-    }
-    delay(200);  // debounce
-  }
+// void handleScrollButtons() {
+//   if (digitalRead(BTN2) == LOW) {  // Scroll down
+//     if (selectedIndex < (int)networkList.size() - 1) {
+//       selectedIndex++;
+//       if (selectedIndex >= displayStart + 3) {
+//         displayStart++;
+//       }
+//       displayNetworks();
+//     }
+//     delay(200);  // debounce
+//   }
 
-  if (digitalRead(BTN4) == LOW) {  // Scroll up
-    if (selectedIndex > 0) {
-      selectedIndex--;
-      if (selectedIndex < displayStart) {
-        displayStart--;
-      }
-      displayNetworks();
-    }
-    delay(200);  // debounce
-  }
-}
+//   if (digitalRead(BTN1) == LOW) {  // Scroll up
+//     if (selectedIndex > 0) {
+//       selectedIndex--;
+//       if (selectedIndex < displayStart) {
+//         displayStart--;
+//       }
+//       displayNetworks();
+//     }
+//     delay(200);  // debounce
+//   }
+// }
