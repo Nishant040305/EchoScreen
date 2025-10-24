@@ -77,7 +77,7 @@
 
             React.useEffect(() => {
                 // Connect to socket.io server
-                const newSocket = io('https://esp-32-morse-based-chat-application.vercel.app');
+                const newSocket = io('https://esp-32-morse-based-chat-application.onrender.com');
                 setSocket(newSocket);
 
                 newSocket.on('userId', (id) => {
