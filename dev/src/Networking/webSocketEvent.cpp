@@ -116,12 +116,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 newMsg.text = transcription;
                 newMsg.timestamp = millis();
                 messages.push_back(newMsg);
+                newMR = true;
+                delay(300);
                 
-                lcd.clear();
-                lcd.print("New Message:");
-                lcd.setCursor(0, 1);
-                lcd.print(transcription.substring(0, 20));
-                delay(3000);
               }
               else if(eventName == "error") {
                 String errorMsg = arr[1].as<String>();

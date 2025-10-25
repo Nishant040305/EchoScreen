@@ -36,5 +36,6 @@ struct Message {
 };
 extern String URL;
 extern std::vector<Message> messages;
-
+extern String trans;
+extern bool newMR;
 #endif

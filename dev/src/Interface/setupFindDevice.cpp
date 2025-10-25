@@ -70,27 +70,3 @@ void setupFindDevice() {
   }
 
 }
-
-// void handleScrollButtons() {
-//   if (digitalRead(BTN2) == LOW) {  // Scroll down
-//     if (selectedIndex < (int)networkList.size() - 1) {
-//       selectedIndex++;
-//       if (selectedIndex >= displayStart + 3) {
-//         displayStart++;
-//       }
-//       displayNetworks();
-//     }
-//     delay(200);  // debounce
-//   }
-
-//   if (digitalRead(BTN1) == LOW) {  // Scroll up
-//     if (selectedIndex > 0) {
-//       selectedIndex--;
-//       if (selectedIndex < displayStart) {
-//         displayStart--;
-//       }
-//       displayNetworks();
-//     }
-//     delay(200);  // debounce
-//   }
-// }

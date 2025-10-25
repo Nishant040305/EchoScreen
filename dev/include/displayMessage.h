@@ -3,7 +3,12 @@
 #include<constants.h>
 #include<LiquidCrystal.h>
 extern LiquidCrystal lcd;
-
-void displayMessages();
-
+void buildFullText();
+void renderMessages();
+void handleScrollUp();
+void handleScrollDown();
+bool handleExitMessages();
+void handleNewMessage();
+void initMessageDisplay();
+void wrapText();
 #endif

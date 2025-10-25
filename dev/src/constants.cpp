@@ -14,3 +14,5 @@ std::vector<Message> messages;
 bool isCreator = false;
 String URL = "esp-32-morse-based-chat-application.onrender.com";
 WebSocketsClient webSocket;
+String trans = "";
+bool newMR = false;

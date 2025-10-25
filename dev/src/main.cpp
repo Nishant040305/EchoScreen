@@ -13,6 +13,8 @@
 #include<sendConnectedUser.h>
 #include<webSocketEvent.h>
 #include<showJoinCreateOption.h>
+#include<displayMessage.h>
+
 LiquidCrystal lcd(19, 23, 18, 17, 16, 15);
 String code = "";
 void setup(){
@@ -103,93 +105,6 @@ void loop(){
         }
       }
       break;
-      // case 6:{ // Socket.IO Connection
-      //   lcd.clear();
-      //   lcd.print("Connecting to");
-      //   lcd.setCursor(0,1);
-      //   lcd.print("server...");
-        
-      //   // Configure SSL certificate
-      //   socketIO.beginSSL("esp-32-morse-based-chat-application.onrender.com", 443, "/socket.io/?EIO=4", "");
-        
-      //   // Or disable certificate verification (not recommended for production)
-      //   // socketIO.beginSSL("esp-32-morse-based-chat-application.onrender.com", 443, "/socket.io/?EIO=4", "");
-        
-      //   socketIO.onEvent(socketIOEvent);
-      //   socketIO.setReconnectInterval(5000);
-        
-      //   // Enable debug output
-      //   // socketIO.enableHeartbeat(15000, 3000, 2);
-        
-      //   Serial.println("Waiting for Socket.IO connection...");
-        
-      //   // Wait for connection
-      //   int wsAttempts = 0;
-      //   while(!socketConnected && wsAttempts < 60) { // Increased timeout
-      //     socketIO.loop();
-      //     delay(500); // Increased delay
-      //     if(wsAttempts % 5 == 0) {
-      //       Serial.print(".");
-      //     }
-      //     wsAttempts++;
-      //   }
-        
-      //   if(socketConnected) {
-      //     Serial.println("\n✓ Socket.IO connected!");
-          
-      //     lcd.clear();
-      //     lcd.print("Server Connected!");
-      //     delay(1000);
-          
-      //     // Send connectUser event
-      //     sendConnectUser();
-      //     Serial.println("Sent connectUser, waiting for userId...");
-          
-      //     // Wait for userId response
-      //     int userIdAttempts = 0;
-      //     while(userId == "" && userIdAttempts < 60 && socketConnected) { // Check socketConnected
-      //       socketIO.loop();
-      //       delay(500); // Increased delay
-      //       userIdAttempts++;
-            
-      //       if(userIdAttempts % 5 == 0) {
-      //         Serial.print(".");
-      //       }
-      //     }
-          
-      //     if(userId != "") {
-      //       Serial.println("\n✓ Successfully received userId: " + userId);
-      //       // status will be set to 7 in socketIOEvent
-      //     }
-      //     else if(!socketConnected) {
-      //       Serial.println("\n✗ Disconnected while waiting for userId");
-      //       lcd.clear();
-      //       lcd.print("Connection Lost");
-      //       delay(2000);
-      //       status = 0;
-      //     }
-      //     else {
-      //       Serial.println("\n✗ Timeout waiting for userId");
-      //       lcd.clear();
-      //       lcd.print("No User ID");
-      //       lcd.setCursor(0,1);
-      //       lcd.print("Timeout");
-      //       delay(2000);
-      //       socketIO.disconnect();
-      //       socketConnected = false;
-      //       status = 0;
-      //     }
-      //   }
-      //   else {
-      //     Serial.println("\n✗ Socket.IO connection failed!");
-      //     lcd.clear();
-      //     lcd.print("Server Error");
-      //     lcd.setCursor(0,1);
-      //     lcd.print("Cannot connect");
-      //     delay(3000);
-      //     status = 0;
-      //   }
-      //   break;      }
     case 6:{ // WebSocket Connection
       lcd.clear();
       lcd.print("Connecting to");
@@ -303,7 +218,7 @@ void loop(){
 
       case 9: // Create Room
         webSocket.loop();
-        sendCreateRoom();
+        createRoom();
         lcd.clear();
         lcd.print("Creating Room...");
         status = 12;
@@ -340,15 +255,13 @@ void loop(){
         lcd.setCursor(0, 1);
         lcd.print("Room: " + roomId.substring(0, 16));
         
-        // Wait up to 15 seconds for confirmation
         while(status == 11 && (millis() - startTime) < 15000) {
           webSocket.loop();
           delay(100);
         }
         
-        // Timeout check
         if(status == 11) {
-          Serial.println("⏱️ Join confirmation timeout");
+          Serial.println("Join confirmation timeout");
           lcd.clear();
           lcd.print("Room not found!");
           lcd.setCursor(0, 1);
@@ -371,7 +284,7 @@ void loop(){
         
         // Timeout
         if(status == 12) {
-          Serial.println("⏱️ Room creation timeout");
+          Serial.println("Room creation timeout");
           lcd.clear();
           lcd.print("Timeout!");
           lcd.setCursor(0, 1);
@@ -382,23 +295,50 @@ void loop(){
         break;
       }
 
-      case 13: {  // Active chat state
-        webSocket.loop();
-        
+      case 13: {
         lcd.clear();
+        lcd.setCursor(0, 0);
         lcd.print("Room: " + roomId.substring(0, 16));
         lcd.setCursor(0, 1);
+        lcd.print("BTN3: View messages");
         
-        if(messages.size() > 0) {
-          Message lastMsg = messages.back();
-          lcd.print(lastMsg.text.substring(0, 20));
-        } else {
-          lcd.print("No messages");
+        bool viewingMessages = false;
+        
+        while(true) {
+          webSocket.loop();
+          
+          if(!viewingMessages) {            
+            // BTN3: Enter message view
+            if(digitalRead(BTN3) == LOW) {
+              viewingMessages = true;
+              initMessageDisplay();
+              delay(300);
+            }
+            
+            // BTN4: Exit room
+            if(digitalRead(BTN4) == LOW) {
+              status = 8;
+              delay(200);
+              break;
+            }
+          } else {
+            handleScrollUp();
+            handleScrollDown();
+            handleNewMessage();
+            renderMessages();
+            if(handleExitMessages()) {
+              viewingMessages = false;
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("Room: " + roomId.substring(0, 16));
+              lcd.setCursor(0, 1);
+              lcd.print("BTN3: View messages");
+              lcd.print("BTN4: Exit Room");
+            }
+          }
+          
+          delay(50);
         }
-        
-        // TODO: Add your button/audio logic here
-        
-        delay(100);
         break;
       }
   }
