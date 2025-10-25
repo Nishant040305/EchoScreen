@@ -3,133 +3,290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Transcription Test</title>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>🎤 Live Transcription Test Interface</h1>
-        
-        <div class="card">
-            <h2>Connection Status</h2>
-            <div id="connectionStatus" class="status disconnected">
-                Disconnected
-            </div>
-            <button id="connectBtn" onclick="connectSocket()">Connect to Server</button>
-        </div>
-        
-        <div class="grid">
-            <div class="card">
-                <h2>Create Room</h2>
-                <button id="createRoomBtn" onclick="createRoom()" disabled>Create New Room</button>
-                <div id="roomCodeDisplay" class="hidden" style="margin-top: 16px;">
-                    <label>Your Room Code:</label>
-                    <input type="text" id="createdRoomCode" readonly style="font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 4px;">
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>Join Room</h2>
-                <div class="input-group">
-                    <label for="joinRoomCode">Room Code</label>
-                    <input type="text" id="joinRoomCode" placeholder="Enter 4-character code" maxlength="4" style="text-transform: uppercase;">
-                </div>
-                <button id="joinRoomBtn" onclick="joinRoom()" disabled>Join Room</button>
-            </div>
-        </div>
-        
-        <div class="card hidden" id="roomSection">
-            <h2>
-                Room: <span id="currentRoom"></span>
-                <span id="roleBadge" class="role-badge"></span>
-            </h2>
-            
-            <div id="recordingControls" class="input-group">
-                <label>Audio Recording</label>
-                <button id="recordBtn" onclick="startRecording()" class="secondary">🎙️ Start Recording</button>
-                <button id="stopBtn" onclick="stopRecording()" class="danger hidden">⏹️ Stop & Transcribe</button>
-            </div>
-            
-            <div id="recordingIndicator" class="recording hidden">
-                <div class="recording-indicator"></div>
-                <span>Recording... Speak now!</span>
-            </div>
-            
-            <h3 style="margin-top: 24px; margin-bottom: 12px;">Live Transcriptions</h3>
-            <div id="transcriptions">
-                <p style="color: #718096; text-align: center;">No transcriptions yet. Record audio to start!</p>
-            </div>
-            
-            <button onclick="leaveRoom()" class="danger" style="margin-top: 16px;">Leave Room</button>
-        </div>
-        
-        <div class="card">
-            <h2>Debug Logs</h2>
-            <div id="logs">
-                <div class="log-item">Waiting for connection...</div>
-            </div>
-            <button onclick="clearLogs()" style="margin-top: 12px;">Clear Logs</button>
-        </div>
-    </div>
-
-    <script>
-        // const SERVER_URL = 'https://esp-32-morse-based-chat-application.onrender.com';
-        const SERVER_URL = 'http://localhost:5000';
-        let socket = null;
-        let currentRoom = null;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let userRole = null;
-        let sessionId = null;
-        let reconnectAttempts = 0;
-        const MAX_RECONNECT_ATTEMPTS = 5;
-        
-        function log(message, type = 'info') {
-            const logs = document.getElementById('logs');
-            const timestamp = new Date().toLocaleTimeString();
-            const logItem = document.createElement('div');
-            logItem.className = 'log-item';
-            logItem.textContent = `[${timestamp}] ${message}`;
-            logs.appendChild(logItem);
-            logs.scrollTop = logs.scrollHeight;
-            console.log(`[${type.toUpperCase()}] ${message}`);
+    <title>ESP-32 Morse Chat - Node.js Backend Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
         }
         
-        function clearLogs() {
-            document.getElementById('logs').innerHTML = '<div class="log-item">Logs cleared</div>';
+        h1 {
+            color: #333;
+            text-align: center;
         }
         
-        function updateConnectionStatus(connected) {
-            const statusEl = document.getElementById('connectionStatus');
-            const connectBtn = document.getElementById('connectBtn');
-            const createBtn = document.getElementById('createRoomBtn');
-            const joinBtn = document.getElementById('joinRoomBtn');
-            
-            if (connected) {
-                statusEl.textContent = 'Connected ✓';
-                statusEl.className = 'status connected';
-                connectBtn.textContent = 'Disconnect';
-                createBtn.disabled = false;
-                joinBtn.disabled = false;
-            } else {
-                statusEl.textContent = 'Disconnected ✗';
-                statusEl.className = 'status disconnected';
-                connectBtn.textContent = 'Connect to Server';
-                createBtn.disabled = true;
-                joinBtn.disabled = true;
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+        
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        
+        .log {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .log-entry.error {
+            color: #d32f2f;
+        }
+        
+        .log-entry.success {
+            color: #388e3c;
+        }
+        
+        .log-entry.info {
+            color: #1976d2;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #d32f2f;
+        }
+        
+        .status-indicator.connected {
+            background-color: #388e3c;
+        }
+        
+        .recording-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #d32f2f;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
             }
         }
         
-        async function connectSocket() {
+        .transcription {
+            font-weight: bold;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ESP-32 Morse Chat - Node.js Backend Test</h1>
+    
+    <div class="container">
+        <div class="card">
+            <div class="status">
+                <div id="connectionIndicator" class="status-indicator"></div>
+                <span id="connectionStatus">Disconnected</span>
+            </div>
+            <div class="controls">
+                <button id="connectBtn">Connect to Server</button>
+                <button id="disconnectBtn" disabled>Disconnect</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>Room Management</h3>
+            <div class="controls">
+                <button id="createRoomBtn" disabled>Create Room</button>
+                <input id="roomCodeInput" type="text" placeholder="Enter room code" maxlength="4">
+                <button id="joinRoomBtn" disabled>Join Room</button>
+            </div>
+            <div id="roomInfo" class="hidden">
+                <p>Current Room: <span id="currentRoomCode"></span></p>
+                <p>Role: <span id="userRole"></span></p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>Audio Recording</h3>
+            <div class="controls">
+                <button id="recordBtn" disabled>Record Audio</button>
+                <button id="stopBtn" class="hidden">Stop Recording</button>
+                <div id="recordingIndicator" class="recording-indicator hidden"></div>
+            </div>
+            <div id="transcriptionContainer" class="hidden">
+                <h4>Transcription:</h4>
+                <div id="transcriptionText" class="transcription"></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>Log</h3>
+            <div class="log-container">
+                <div id="log" class="log"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const SERVER_URL = 'http://localhost:5000';
+        
+        // Global variables
+        let socket;
+        let sessionId;
+        let currentRoom;
+        let userRole;
+        let mediaRecorder;
+        let audioChunks;
+        let stream;
+        
+        // DOM Elements
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const roomCodeInput = document.getElementById('roomCodeInput');
+        const recordBtn = document.getElementById('recordBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const roomInfo = document.getElementById('roomInfo');
+        const currentRoomCode = document.getElementById('currentRoomCode');
+        const userRoleElement = document.getElementById('userRole');
+        const connectionIndicator = document.getElementById('connectionIndicator');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const transcriptionContainer = document.getElementById('transcriptionContainer');
+        const transcriptionText = document.getElementById('transcriptionText');
+        
+        // Utility functions
+        function log(message, type = 'normal') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.classList.add('log-entry');
+            if (type) entry.classList.add(type);
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionIndicator.classList.add('connected');
+                connectionStatus.textContent = 'Connected';
+                disconnectBtn.disabled = false;
+                createRoomBtn.disabled = false;
+                joinRoomBtn.disabled = false;
+            } else {
+                connectionIndicator.classList.remove('connected');
+                connectionStatus.textContent = 'Disconnected';
+                disconnectBtn.disabled = true;
+                createRoomBtn.disabled = true;
+                joinRoomBtn.disabled = true;
+                recordBtn.disabled = true;
+                roomInfo.classList.add('hidden');
+            }
+        }
+        
+        // Session management
+        async function fetchSessionId() {
+            try {
+                log('Fetching session ID...');
+                const response = await fetch(`${SERVER_URL}/session`);
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    sessionId = data.session_id;
+                    log(`Session ID: ${sessionId}`, 'success');
+                    return sessionId;
+                } else {
+                    throw new Error('Failed to get session ID');
+                }
+            } catch (error) {
+                log(`Error fetching session ID: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        // Socket.IO connection
+        async function connectToServer() {
             if (socket && socket.connected) {
-                socket.disconnect();
+                log('Already connected to server', 'info');
                 return;
             }
             
             if (!sessionId) {
-                log('No session ID found, fetching one...');
                 await fetchSessionId();
             }
             
@@ -153,22 +310,8 @@
             socket.on('connect', () => {
                 log(`Connected! Socket ID: ${socket.id}`, 'success');
                 updateConnectionStatus(true);
-            });
-            
-            socket.on('disconnect', (reason) => {
-                log(`Disconnected from server: ${reason}`, 'warning');
-                updateConnectionStatus(false);
-            });
-            
-            socket.io.on('reconnect_attempt', (attemptNumber) => {
-                log(`Reconnection attempt ${attemptNumber}...`, 'info');
-            });
-            
-            socket.io.on('reconnect', (attemptNumber) => {
-                log(`Reconnected after ${attemptNumber} attempts!`, 'success');
                 
                 if (currentRoom) {
-                    log(`Attempting to rejoin room ${currentRoom}...`);
                     socket.emit('join_room', {room_code: currentRoom});
                 }
             });
@@ -178,56 +321,67 @@
             });
             
             socket.io.on('reconnect_failed', () => {
-                log('Failed to reconnect after all attempts', 'error');
-                alert('Connection lost. Please refresh the page to reconnect.');
+                log('Failed to reconnect after multiple attempts', 'error');
+                updateConnectionStatus(false);
+            });
+            
+            socket.on('disconnect', (reason) => {
+                log(`Disconnected: ${reason}`, 'error');
+                updateConnectionStatus(false);
             });
             
             socket.on('connected', (data) => {
-                log(`Server acknowledged connection: ${data.sid}`);
+                log(`Server acknowledged connection with SID: ${data.sid}`, 'success');
             });
             
-            socket.on('joined_room', (data) => {
-                log(`Successfully joined room: ${data.room_code} as ${data.role}`, 'success');
+            socket.on('reconnected', (data) => {
+                log(`Reconnected to room ${data.room_code} as ${data.role}`, 'success');
                 currentRoom = data.room_code;
                 userRole = data.role;
                 
-                // Update UI
-                document.getElementById('currentRoom').textContent = currentRoom;
-                document.getElementById('roomSection').classList.remove('hidden');
-                document.getElementById('connectionStatus').textContent = `In Room: ${currentRoom}`;
-                document.getElementById('connectionStatus').className = 'status in-room';
+                currentRoomCode.textContent = currentRoom;
+                userRoleElement.textContent = userRole;
+                roomInfo.classList.remove('hidden');
                 
-                // Update role badge
-                const roleBadge = document.getElementById('roleBadge');
-                roleBadge.textContent = userRole.charAt(0).toUpperCase() + userRole.slice(1);
-                roleBadge.className = `role-badge ${userRole}`;
+                if (userRole === 'creator') {
+                    recordBtn.disabled = false;
+                } else {
+                    recordBtn.disabled = true;
+                }
+            });
+            
+            socket.on('joined_room', (data) => {
+                log(data.msg, 'success');
+                currentRoom = data.room_code;
+                userRole = data.role;
                 
-                // Show recording controls for all users (you can modify this logic)
-                const recordingControls = document.getElementById('recordingControls');
-                recordingControls.style.display = 'block';
+                currentRoomCode.textContent = currentRoom;
+                userRoleElement.textContent = userRole;
+                roomInfo.classList.remove('hidden');
                 
-                log(`Recording controls are now visible. Role: ${userRole}`);
+                if (userRole === 'creator') {
+                    recordBtn.disabled = false;
+                } else {
+                    recordBtn.disabled = true;
+                }
             });
             
             socket.on('user_joined', (data) => {
-                log(`Another user joined the room: ${data.sid} as ${data.role}`);
-                addSystemMessage(`User joined as ${data.role}`);
+                log(`User ${data.sid} joined the room as ${data.role}`, 'info');
             });
             
             socket.on('user_disconnected', (data) => {
-                log(`User ${data.sid} disconnected`);
-                addSystemMessage('User disconnected');
+                log(`User ${data.sid} disconnected from the room`, 'info');
             });
             
             socket.on('user_reconnected', (data) => {
-                log(`User ${data.sid} reconnected`);
-                addSystemMessage('User reconnected');
+                log(`User ${data.sid} reconnected to the room`, 'info');
             });
             
             socket.on('transcription', (data) => {
-                log(`Received transcription from ${data.sender}: "${data.text}"`, 'success');
-                const isCreator = data.is_creator || false;
-                addTranscription(data.text, isCreator, data.sender === socket.id);
+                log(`Received transcription for room ${data.room_code}`, 'success');
+                transcriptionText.textContent = data.text;
+                transcriptionContainer.classList.remove('hidden');
             });
             
             socket.on('error', (data) => {
@@ -246,58 +400,47 @@
             if (!sessionId) {
                 log('No session ID found, fetching one...');
                 await fetchSessionId();
-                
-                if (!sessionId) {
-                    log('Failed to get session ID. Cannot create room.', 'error');
-                    alert('Could not establish a session with the server. Please refresh the page and try again.');
-                    return;
-                }
             }
             
             try {
                 const response = await fetch(`${SERVER_URL}/create_room`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     credentials: 'include'
                 });
+                
                 const data = await response.json();
-                log(`Room created: ${data.room_code}`, 'success');
                 
-                document.getElementById('createdRoomCode').value = data.room_code;
-                document.getElementById('roomCodeDisplay').classList.remove('hidden');
-                
-                document.getElementById('joinRoomCode').value = data.room_code;
-                joinRoom();
+                if (data.status === 'ok') {
+                    const roomCode = data.room_code;
+                    log(`Room created: ${roomCode}`, 'success');
+                    
+                    // Join the room via socket
+                    socket.emit('join_room', {room_code: roomCode});
+                } else {
+                    throw new Error(data.message || 'Failed to create room');
+                }
             } catch (error) {
-                log(`Failed to create room: ${error.message}`, 'error');
-                alert('Failed to create room. Is the server running?');
+                log(`Error creating room: ${error.message}`, 'error');
+                alert(`Failed to create room: ${error.message}`);
             }
         }
         
-        async function joinRoom() {
-            const roomCode = document.getElementById('joinRoomCode').value.toUpperCase().trim();
-            if (!roomCode || roomCode.length !== 4) {
-                alert('Please enter a valid 4-character room code');
+        async function joinRoom(roomCode) {
+            if (!roomCode) {
+                alert('Please enter a room code');
                 return;
-            }
-            
-            if (!sessionId) {
-                log('No session ID found, fetching one...');
-                await fetchSessionId();
-                
-                if (!sessionId) {
-                    log('Failed to get session ID. Cannot join room.', 'error');
-                    alert('Could not establish a session with the server. Please refresh the page and try again.');
-                    return;
-                }
             }
             
             log(`Checking if room ${roomCode} exists...`);
             
             try {
-                const response = await fetch(`${SERVER_URL}/join_room?code=${roomCode}`, {
+                const response = await fetch(`${SERVER_URL}/join_room?room_code=${roomCode}`, {
                     credentials: 'include'
                 });
+                
                 const data = await response.json();
                 
                 if (data.status === 'ok') {
@@ -309,26 +452,20 @@
                     alert('Room not found. Please check the code.');
                 }
             } catch (error) {
-                log(`Failed to verify room: ${error.message}`, 'error');
-                alert('Failed to join room. Is the server running?');
+                log(`Error joining room: ${error.message}`, 'error');
+                alert(`Failed to join room: ${error.message}`);
             }
         }
         
-        function leaveRoom() {
-            log(`Leaving room ${currentRoom}`);
-            currentRoom = null;
-            userRole = null;
-            document.getElementById('roomSection').classList.add('hidden');
-            document.getElementById('transcriptions').innerHTML = '<p style="color: #718096; text-align: center;">No transcriptions yet. Record audio to start!</p>';
-            updateConnectionStatus(true);
-        }
-        
         async function startRecording() {
-            log('Requesting microphone access...');
-            
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-                log('Microphone access granted', 'success');
+                log('Requesting microphone access...');
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                log('Microphone access granted, starting recording...', 'success');
+                document.getElementById('recordBtn').classList.add('hidden');
+                document.getElementById('stopBtn').classList.remove('hidden');
+                document.getElementById('recordingIndicator').classList.remove('hidden');
                 
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
@@ -338,26 +475,10 @@
                     log(`Audio chunk received: ${event.data.size} bytes`);
                 };
                 
-                mediaRecorder.onstop = async () => {
-                    log('Recording stopped, processing audio...');
-                    const audioBlob = new Blob(audioChunks, {type: 'audio/wav'});
-                    log(`Total audio size: ${audioBlob.size} bytes`);
-                    await sendAudioForTranscription(audioBlob);
-                    
-                    stream.getTracks().forEach(track => track.stop());
-                    log('Microphone stream stopped');
-                };
-                
                 mediaRecorder.start();
-                log('Recording started!', 'success');
-                
-                document.getElementById('recordBtn').classList.add('hidden');
-                document.getElementById('stopBtn').classList.remove('hidden');
-                document.getElementById('recordingIndicator').classList.remove('hidden');
-                
             } catch (error) {
-                log(`Failed to access microphone: ${error.message}`, 'error');
-                alert('Could not access microphone. Please grant permission and ensure you are using HTTPS or localhost.');
+                log(`Error accessing microphone: ${error.message}`, 'error');
+                alert(`Could not access microphone: ${error.message}`);
             }
         }
         
@@ -370,137 +491,120 @@
                 document.getElementById('stopBtn').classList.add('hidden');
                 document.getElementById('recordingIndicator').classList.add('hidden');
             }
-        }
-        
-        async function sendAudioForTranscription(audioBlob) {
-            if (!currentRoom) {
-                alert('Not in a room!');
-                return;
-            }
             
-            log(`Converting audio to buffer (${audioBlob.size} bytes)...`);
-            
-            try {
-                const arrayBuffer = await audioBlob.arrayBuffer();
-                const uint8Array = new Uint8Array(arrayBuffer);
+            mediaRecorder.onstop = async () => {
+                log('Recording stopped, processing audio...');
                 
-                log(`Sending audio to room ${currentRoom} via socket...`);
-                
-                if (!socket || !socket.connected) {
-                    log('Socket disconnected. Attempting to reconnect...', 'warning');
-                    
-                    if (socket) {
-                        socket.connect();
+                try {
+                    // Ensure we're connected to the server
+                    if (!socket || !socket.connected) {
+                        log('Socket not connected, attempting to reconnect...', 'error');
                         
-                        await new Promise((resolve) => {
-                            const checkConnection = () => {
-                                if (socket.connected) {
-                                    resolve();
-                                } else {
-                                    setTimeout(checkConnection, 500);
-                                }
-                            };
-                            checkConnection();
-                        });
-                        
-                        log('Reconnected to server', 'success');
-                        
-                        if (currentRoom) {
-                            socket.emit('join_room', {room_code: currentRoom});
-                            log(`Rejoined room ${currentRoom}`);
+                        if (socket) {
+                            // Wait for reconnection
+                            await new Promise((resolve) => {
+                                const checkConnection = () => {
+                                    if (socket.connected) {
+                                        resolve();
+                                    } else {
+                                        setTimeout(checkConnection, 500);
+                                    }
+                                };
+                                checkConnection();
+                            });
+                            
+                            log('Reconnected to server', 'success');
+                            
+                            if (currentRoom) {
+                                socket.emit('join_room', {room_code: currentRoom});
+                                log(`Rejoined room ${currentRoom}`);
+                            }
+                        } else {
+                            log('Socket object not available. Cannot reconnect.', 'error');
+                            return;
                         }
-                    } else {
-                        log('Socket object not available. Cannot reconnect.', 'error');
-                        return;
+                    }
+                    
+                    const sendPromise = new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            reject(new Error('Server did not acknowledge audio upload in time'));
+                        }, 10000);
+                        
+                        const onAudioReceived = (data) => {
+                            clearTimeout(timeout);
+                            socket.off('audio_received', onAudioReceived);
+                            resolve();
+                        };
+                        
+                        socket.on('audio_received', onAudioReceived);
+                        
+                        // Create audio blob and send via socket
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        log(`Audio size: ${audioBlob.size} bytes`);
+                        
+                        // Convert blob to array buffer
+                        const reader = new FileReader();
+                        reader.readAsArrayBuffer(audioBlob);
+                        reader.onloadend = () => {
+                            const arrayBuffer = reader.result;
+                            const uint8Array = new Uint8Array(arrayBuffer);
+                            
+                            socket.emit('upload_audio', {
+                                room_code: currentRoom,
+                                filename: `recording_${Date.now()}.wav`,
+                                audio: uint8Array
+                            });
+                        };
+                    });
+                    
+                    await sendPromise;
+                    log('Audio sent and acknowledged by server! Waiting for transcription...', 'success');
+                    
+                } catch (error) {
+                    log(`Error sending audio: ${error.message}`, 'error');
+                    alert(`Failed to send audio: ${error.message}`);
+                } finally {
+                    // Stop all tracks
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
                     }
                 }
-                
-                const sendPromise = new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => {
-                        reject(new Error('Server did not acknowledge audio upload in time'));
-                    }, 10000);
-                    
-                    const onAudioReceived = (data) => {
-                        clearTimeout(timeout);
-                        socket.off('audio_received', onAudioReceived);
-                        resolve(data);
-                    };
-                    
-                    socket.on('audio_received', onAudioReceived);
-                    
-                    socket.emit('upload_audio', {
-                        room_code: currentRoom,
-                        filename: `recording_${Date.now()}.wav`,
-                        audio: uint8Array
-                    });
-                });
-                
-                await sendPromise;
-                log('Audio sent and acknowledged by server! Waiting for transcription...', 'success');
-                
-            } catch (error) {
-                log(`Error sending audio: ${error.message}`, 'error');
-                alert(`Failed to send audio: ${error.message}`);
+            };
+        }
+        
+        // Event listeners
+        connectBtn.addEventListener('click', connectToServer);
+        
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+                log('Disconnected from server');
+                updateConnectionStatus(false);
             }
-        }
+        });
         
-        function addTranscription(text, isCreator = false, isMe = false) {
-            const container = document.getElementById('transcriptions');
-            
-            if (container.querySelector('p')) {
-                container.innerHTML = '';
+        createRoomBtn.addEventListener('click', createRoom);
+        
+        joinRoomBtn.addEventListener('click', () => {
+            const roomCode = roomCodeInput.value.trim().toUpperCase();
+            joinRoom(roomCode);
+        });
+        
+        roomCodeInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                const roomCode = roomCodeInput.value.trim().toUpperCase();
+                joinRoom(roomCode);
             }
-            
-            const item = document.createElement('div');
-            item.className = `transcription-item ${isCreator ? 'creator' : 'listener'} ${isMe ? 'me' : 'other'}`;
-            
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            const timestamp = new Date().toLocaleTimeString();
-            const roleText = isCreator ? 'Creator' : 'Listener';
-            meta.textContent = `${timestamp} - ${isMe ? 'You' : 'User'} (${roleText})`;
-            
-            const textEl = document.createElement('div');
-            textEl.className = 'text';
-            textEl.textContent = text || '(empty transcription)';
-            
-            item.appendChild(meta);
-            item.appendChild(textEl);
-            container.appendChild(item);
-            
-            container.scrollTop = container.scrollHeight;
-        }
+        });
         
-        function addSystemMessage(text) {
-            const container = document.getElementById('transcriptions');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'system-message';
-            messageDiv.textContent = text;
-            container.appendChild(messageDiv);
-            container.scrollTop = container.scrollHeight;
-        }
+        recordBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
         
-        async function fetchSessionId() {
-            try {
-                log('Fetching session ID from server...');
-                const response = await fetch(`${SERVER_URL}/session`, {
-                    credentials: 'include'
-                });
-                const data = await response.json();
-                sessionId = data.session_id;
-                log(`Session ID obtained: ${sessionId}`, 'success');
-                return sessionId;
-            } catch (error) {
-                log(`Failed to fetch session ID: ${error.message}`, 'error');
-                return null;
-            }
-        }
-        
-        window.onload = async () => {
-            log('Page loaded. Fetching session ID...');
-            await fetchSessionId();
-            log('Click "Connect to Server" to begin.');
-        };
+        // Initialize
+        log('Test page loaded', 'info');
+        fetchSessionId().then(() => {
+            connectBtn.disabled = false;
+        });
     </script>
 </body>
 </html>

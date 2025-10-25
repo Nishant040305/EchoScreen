@@ -1,103 +1,124 @@
-# ESP-32 Morse-Based Chat Application Backend
-
-## Overview
-
-This is the backend for a real-time audio transcription service with room functionality. The system allows users to create rooms where one user is designated as the creator (speaker) and others join as listeners. The creator can send audio which is transcribed and broadcast to all listeners in the room.
+# ESP-32 Morse-Based Chat Application Node.js Backend
 
 ## Features
 
-- **Room Management**: Create and join rooms using 4-digit codes
-- **User Roles**: Distinct creator (speaker) and listener roles
-- **Audio Transcription**: Real-time speech-to-text conversion
-- **Persistent Sessions**: Handles disconnections gracefully with session tracking
-- **Reconnection Logic**: Users can reconnect to their rooms after connection drops
-
-## Architecture
-
-### Components
-
-- **Flask Server**: Handles HTTP requests for room creation and joining
+- **Express Server**: Handles HTTP requests for room creation and joining
 - **Socket.IO**: Manages real-time communication between clients
-- **Session Manager**: Tracks user sessions and handles reconnections
+- **Session Management**: Tracks user sessions and handles reconnections
 - **Room Service**: Manages room creation and access
-- **Transcription Service**: Converts audio to text using Faster Whisper
+- **Audio File Handling**: Accepts and processes audio files via HTTP endpoint and Socket.IO
+- **AssemblyAI Integration**: Provides real-time audio transcription with speaker diarization
+- **Creator-Controlled Audio**: Only room creators can send audio for transcription
 
-## Setup and Installation
+## Project Structure
 
-### Prerequisites
+The backend is organized using a modular architecture:
 
-- Python 3.7+
-- pip
+```
+backend2/
+├── server.js                # Entry point
+├── package.json             # Dependencies
+├── .env                     # Environment variables
+├── uploads/                 # Uploaded audio files (created at runtime)
+├── test/                    # Test client
+│   └── test.html            # Test interface
+└── src/                     # Source code
+    ├── server.js            # Main server setup
+    ├── controllers/         # Request handlers
+    │   ├── audioController.js
+    │   ├── roomController.js
+    │   ├── sessionController.js
+    │   └── socketController.js
+    ├── services/            # Business logic
+    │   ├── audioService.js
+    │   ├── roomService.js
+    │   └── sessionManager.js
+    ├── middleware/          # Custom middleware
+    │   └── cookie-parser.js
+    └── routes/              # API routes
+        └── index.js
+```
 
-### Installation
+## Installation
 
 1. Clone the repository
-2. Install dependencies:
+2. Navigate to the backend2 directory
+3. Install dependencies:
 
 ```bash
-pip install flask flask-socketio flask-cors faster-whisper
+npm install
 ```
 
-### Running the Server
+4. Create a `.env` file with the following variables (or use the provided one):
+
+```
+PORT=5000
+CORS_ORIGIN=*
+SESSION_COOKIE_MAX_AGE=2592000000
+SOCKET_PING_TIMEOUT=60000
+SOCKET_PING_INTERVAL=25000
+UPLOAD_DIR=uploads
+MAX_FILE_SIZE=10485760
+```
+
+5. Start the server:
 
 ```bash
-python app.py
+npm start
 ```
 
-The server will start on http://localhost:5000
+Or for development with auto-reload:
+
+```bash
+npm run dev
+```
 
 ## API Endpoints
 
-### Create Room
+### HTTP Routes
 
-- **URL**: `/create_room`
-- **Method**: `POST`
-- **Response**: `{"room_code": "XXXX", "created_at": "timestamp"}`
+- **POST /create_room**: Create a new chat room
+- **GET /join_room**: Check if a room exists and join it
+- **GET /session**: Get or create a session ID
+- **POST /upload_audio**: Upload an audio file for processing
 
-### Join Room
+### Socket.IO Events
 
-- **URL**: `/join_room?code=XXXX`
-- **Method**: `GET`
-- **Response**: `{"status": "ok", "room_code": "XXXX", "role": "creator|listener"}`
+#### Client to Server
 
-### Get Session
+- **join_room**: Join an existing room
+- **upload_audio**: Send audio data for processing
 
-- **URL**: `/session`
-- **Method**: `GET`
-- **Response**: `{"session_id": "uuid", "status": "ok"}`
+#### Server to Client
 
-## Socket.IO Events
+- **connected**: Initial connection established
+- **reconnected**: Reconnection successful
+- **joined_room**: Successfully joined a room
+- **audio_received**: Audio file received and being processed
+- **transcription**: Audio transcription result
+- **error**: Error message
+- **user_joined**: New user joined the room
+- **user_reconnected**: User reconnected to the room
+- **user_disconnected**: User disconnected from the room
 
-### Client to Server
+## Audio Processing
 
-- `connect`: Connect to the server
-- `disconnect`: Disconnect from the server
-- `join_room`: Join a room with a room code
-- `upload_audio`: Upload audio for transcription (creator only)
+The backend accepts audio files in WAV format and processes them for transcription. In the current implementation, a mock transcription is returned after a short delay. In a production environment, this would be replaced with an actual transcription service.
 
-### Server to Client
+## Session Management
 
-- `connected`: Confirmation of connection
-- `reconnected`: Confirmation of reconnection with room details
-- `joined_room`: Confirmation of joining a room
-- `transcription`: Transcribed text from audio
-- `user_joined`: Notification when a user joins the room
-- `user_disconnected`: Notification when a user disconnects
-- `user_reconnected`: Notification when a user reconnects
-- `error`: Error messages
+Sessions are tracked using cookies and IP addresses. When a user connects, the server attempts to restore their previous session based on:
 
-## Handling Disconnections
+1. Session ID cookie
+2. IP address
 
-The system uses a combination of techniques to handle disconnections:
+Sessions persist for 30 days by default.
 
-1. **Session Tracking**: Maps IP addresses and session IDs to user data
-2. **Reconnection Logic**: Automatically rejoins rooms on reconnection
-3. **Role Persistence**: Maintains user roles (creator/listener) across reconnections
+## Room Management
 
-## Testing
+Rooms are identified by a 4-character alphanumeric code. Each room has:
 
-A test HTML interface is provided in the `test` directory. Open `test.html` in a browser to test the functionality.
+- A creator (who can send audio for transcription)
+- Listeners (who can only receive transcriptions)
 
-## License
-
-MIT
+Rooms persist in memory until the server restarts.
