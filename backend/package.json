@@ -1,7 +1,7 @@
 {
-  "name": "esp32-morse-chat-backend",
+  "name": "EchoScreen",
   "version": "1.0.0",
-  "description": "Node.js backend for ESP-32 Morse-based chat application",
+  "description": "Node.js backend for EchoScreen",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

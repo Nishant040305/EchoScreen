@@ -1,4 +1,4 @@
-# ESP-32 Morse-Based Chat Application Node.js Backend
+# EchoScreen Application Node.js Backend
 
 ## Features
 
