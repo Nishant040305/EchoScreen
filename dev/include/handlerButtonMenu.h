@@ -8,5 +8,5 @@ extern int status;
 
 // Function prototype
 bool handlerButtonMenu();
-
+bool handleJoinCreateOption();
 #endif  // HANDLER_BUTTON_MENU_H

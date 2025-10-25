@@ -7,6 +7,7 @@ extern LiquidCrystal lcd;
 int pos = 0;
 bool codeFormed = false;
 bool codeComplete = false;
+bool CAPS = false;
 String dig4code = "";
 
 const int visibleRows = 3;    
@@ -14,6 +15,7 @@ const int charsPerRow = 10;
 const int visibleChars = visibleRows * charsPerRow;
 int topIndex = 0; 
 
+// --- Character sets ---
 const int totalChars = 62;
 char characters[totalChars] = {
   'A','a','B','b','C','c','D','d','E','e',
@@ -24,6 +26,15 @@ char characters[totalChars] = {
   'Z','z','0','1','2','3','4','5','6','7','8','9'
 };
 
+// --- CAPS character set ---
+const int CAPStotalChars = 36;
+char CAPScharacters[CAPStotalChars] = {
+  'A','B','C','D','E','F','G','H','I','J',
+  'K','L','M','N','O','P','Q','R','S','T',
+  'U','V','W','X','Y','Z',
+  '0','1','2','3','4','5','6','7','8','9'
+};
+
 void drawCharacterGrid() {
   lcd.clear();
   
@@ -31,12 +42,13 @@ void drawCharacterGrid() {
   lcd.print("Code: " + dig4code);
   
   int charIndex = topIndex;
+  int limit = CAPS ? CAPStotalChars : totalChars;
+  char* activeSet = CAPS ? CAPScharacters : characters;
   
   for (int row = 0; row < visibleRows; row++) {
     lcd.setCursor(0, row + 1);
-    
-    for (int col = 0; col < charsPerRow && charIndex < totalChars; col++) {
-      lcd.print(characters[charIndex]);
+    for (int col = 0; col < charsPerRow && charIndex < limit; col++) {
+      lcd.print(activeSet[charIndex]);
       lcd.print(' ');
       charIndex++;
     }
@@ -53,8 +65,10 @@ void getCursorPosition(int charPos, int &lcdX, int &lcdY) {
 }
 
 void highlightCursor() {
-  if (pos < 0) pos = totalChars - 1;
-  if (pos >= totalChars) pos = 0;
+  int limit = CAPS ? CAPStotalChars : totalChars;
+
+  if (pos < 0) pos = limit - 1;
+  if (pos >= limit) pos = 0;
   
   int currentBlock = pos / visibleChars;
   int displayBlock = topIndex / visibleChars;
@@ -82,20 +96,18 @@ void formCode() {
   Serial.println("Character grid displayed");
 }
 
-// --- Move left with wrap and block scrolling ---
+// --- Move left/right with wrap and block scrolling ---
 void moveLeft() {
+  int limit = CAPS ? CAPStotalChars : totalChars;
   pos--;
-  if (pos < 0) {
-    pos = totalChars - 1;  // Wrap to last character
-  }
+  if (pos < 0) pos = limit - 1;
   highlightCursor();
 }
 
 void moveRight() {
+  int limit = CAPS ? CAPStotalChars : totalChars;
   pos++;
-  if (pos >= totalChars) {
-    pos = 0; 
-  }
+  if (pos >= limit) pos = 0;
   highlightCursor();
 }
 
@@ -103,7 +115,9 @@ void moveRight() {
 void appendCharToCode(int digits = 4) {
   if (codeComplete) return;
   
-  dig4code += characters[pos];
+  char* activeSet = CAPS ? CAPScharacters : characters;
+  dig4code += activeSet[pos];
+  
   drawCharacterGrid();
   highlightCursor();
   
@@ -120,12 +134,22 @@ void appendCharToCode(int digits = 4) {
   }
 }
 
+void codeInputinit(bool config){
+  pos = 0;
+  codeFormed = false;
+  codeComplete = false;
+  dig4code = "";
+  topIndex = 0;
+  CAPS = config;
+}
+
 // --- Handle buttons ---
 bool handleCodeInput(String& code,int digits = 4) {
   int b1 = digitalRead(BTN1); // select/enter
   int b2 = digitalRead(BTN2); // clear
   int b3 = digitalRead(BTN3); // left
   int b4 = digitalRead(BTN4); // right
+  
   if (b1 == LOW) {
     if (!codeFormed) formCode();
     else appendCharToCode(digits);
@@ -133,13 +157,11 @@ bool handleCodeInput(String& code,int digits = 4) {
   }
   
   if (b2 == LOW && codeFormed && !codeComplete) {
-    if(dig4code.length()>0){
-      String c = "";
-      for(int i = 0;i<dig4code.length()-1;i++){
-        c+=dig4code[i];
-      }
-      dig4code = c;
+    if (dig4code.length() > 0) {
+      dig4code.remove(dig4code.length() - 1);
     }
+    drawCharacterGrid();
+    highlightCursor();
     delay(150);
   }
   
@@ -153,12 +175,12 @@ bool handleCodeInput(String& code,int digits = 4) {
     delay(150);
   }
 
-  
   if (codeFormed && !codeComplete) {
     highlightCursor();
     return true;
   }
-  if(codeComplete){
+  
+  if (codeComplete) {
     code = dig4code;
   }
   return !codeComplete;

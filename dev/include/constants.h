@@ -34,10 +34,7 @@ struct Message {
   String text;
   unsigned long timestamp;
 };
-#include <WiFiClientSecure.h>
-
-// Root CA Certificate for Let's Encrypt (used by Render.com)
-extern const char* root_ca;
+extern String URL;
 extern std::vector<Message> messages;
 
 #endif

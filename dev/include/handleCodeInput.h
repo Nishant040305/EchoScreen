@@ -8,7 +8,8 @@ void formCode();
 void highlightCursor();
 void moveLeft();
 void moveRight();
-void appendCharToCode();
+void appendCharToCode(int);
 bool handleCodeInput(String& code,int digits);
 void drawCharacterGrid();
+void codeInputinit(bool);
 #endif

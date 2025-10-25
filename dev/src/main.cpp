@@ -12,6 +12,7 @@
 #include<SendRecieveHandler.h>
 #include<sendConnectedUser.h>
 #include<webSocketEvent.h>
+#include<showJoinCreateOption.h>
 LiquidCrystal lcd(19, 23, 18, 17, 16, 15);
 String code = "";
 void setup(){
@@ -25,7 +26,7 @@ void setup(){
 }
 void loop(){
   if(socketConnected){
-    socketIO.loop();
+    webSocket.loop();
   }
   switch (status) {
     case 0: // Landing Screen
@@ -44,11 +45,14 @@ void loop(){
       // break;
       if(!NetworkSSID){status = 1;}
       else{
+        
         NetworkEntry entry = *NetworkSSID;
         Serial.printf("SSID: %s\n",entry.ssid.c_str());
         // Serial.printf("SSID: %s\n",entry.mac.c_str());
         lcd.clear();
         lcd.print("Press BTN1 for Pass");
+        // while(handleCodeInput(code,8,false));
+        codeInputinit(false);
         while(handleCodeInput(code,8));
         status=5;
         delay(1000);
@@ -196,7 +200,7 @@ void loop(){
       
       // Connect to WebSocket endpoint
       // For Render.com with SSL
-      webSocket.beginSSL("esp-32-morse-based-chat-application.onrender.com", 443, "/socket.io/?EIO=4&transport=websocket");
+      webSocket.beginSSL(URL, 443, "/socket.io/?EIO=4&transport=websocket");
       
       // Set event handler
       webSocket.onEvent(webSocketEvent);
@@ -223,7 +227,7 @@ void loop(){
       }
       
       if(socketConnected) {
-        Serial.println("\n✓ WebSocket connected!");
+        Serial.println("\nWebSocket connected!");
         
         // Wait for userId
         startTime = millis();
@@ -235,18 +239,18 @@ void loop(){
         }
         
         if(userId != "") {
-          Serial.println("✓ Successfully received userId!");
+          Serial.println(" Successfully received userId!");
           // status already set to 7 in webSocketEvent
         }
         else if(!socketConnected) {
-          Serial.println("✗ Disconnected while waiting");
+          Serial.println(" Disconnected while waiting");
           lcd.clear();
           lcd.print("Connection Lost");
           delay(2000);
           status = 0;
         }
         else {
-          Serial.println("✗ Timeout waiting for userId");
+          Serial.println("Timeout waiting for userId");
           lcd.clear();
           lcd.print("No User ID");
           delay(2000);
@@ -255,7 +259,7 @@ void loop(){
         }
       }
       else {
-        Serial.println("\n✗ WebSocket connection failed!");
+        Serial.println("\n WebSocket connection failed!");
         Serial.println("Check:");
         Serial.println("1. Server is running");
         Serial.println("2. URL is correct");
@@ -272,30 +276,130 @@ void loop(){
     
     }
     case 7:
-      // Main connected state
-      socketIO.loop(); // Keep connection alive
-      
+      webSocket.loop();
       lcd.clear();
       lcd.print("Connected");
       lcd.setCursor(0,1);
       if(userId != "") {
         lcd.print("ID: " + userId);
+        delay(200);
+        status = 8;
       } else {
         lcd.print("Waiting for ID...");
+      }      
+      delay(500);
+      break;
+      case 8: {
+        webSocket.loop();
+        showJoinCreateOption();
+        bool b = handleJoinCreateOption();
+        while(b) {
+          webSocket.loop();
+          delay(50);
+          b = handleJoinCreateOption();
+        }
+        break;
       }
-      
-      // Example: Send data to server
-      // if(digitalRead(BTN1) == LOW) {
-      //   sendSocketEvent("buttonPress", "BTN1");
-      //   delay(500);
-      // }
-      
-      delay(100);
-      break;
-      
-    default:
-      status = 0;
-      break;
-    }
 
+      case 9: // Create Room
+        webSocket.loop();
+        sendCreateRoom();
+        lcd.clear();
+        lcd.print("Creating Room...");
+        status = 12;
+        break;
+        
+      case 10: {  // Join Room
+        String room = "";
+        showJoin();
+        codeInputinit(true);
+        bool b = handleCodeInput(room, 4);
+        while(b) {
+          webSocket.loop();
+          delay(50);
+          b = handleCodeInput(room, 4);
+        }
+        
+        if(room.length() > 0) {
+          roomId = room;  // Set roomId first
+          sendJoinRoom(room);
+          status = 11;
+        } else {
+          lcd.clear();
+          lcd.print("Invalid Room ID");
+          delay(2000);
+          status = 8;
+        }
+        break;
+      }
+
+      case 11: {  // Waiting for join confirmation
+        unsigned long startTime = millis();
+        lcd.clear();
+        lcd.print("Joining...");
+        lcd.setCursor(0, 1);
+        lcd.print("Room: " + roomId.substring(0, 16));
+        
+        // Wait up to 15 seconds for confirmation
+        while(status == 11 && (millis() - startTime) < 15000) {
+          webSocket.loop();
+          delay(100);
+        }
+        
+        // Timeout check
+        if(status == 11) {
+          Serial.println("⏱️ Join confirmation timeout");
+          lcd.clear();
+          lcd.print("Room not found!");
+          lcd.setCursor(0, 1);
+          lcd.print("Try again");
+          delay(3000);
+          roomId = "";
+          status = 8;  // Go back to menu
+        }
+        break;
+      }
+
+      case 12: {  // Waiting for room creation
+        unsigned long startTime = millis();
+        
+        // Wait up to 15 seconds for roomId
+        while(status == 12 && (millis() - startTime) < 15000) {
+          webSocket.loop();
+          delay(100);
+        }
+        
+        // Timeout
+        if(status == 12) {
+          Serial.println("⏱️ Room creation timeout");
+          lcd.clear();
+          lcd.print("Timeout!");
+          lcd.setCursor(0, 1);
+          lcd.print("Try again");
+          delay(2000);
+          status = 8;  // Go back to menu
+        }
+        break;
+      }
+
+      case 13: {  // Active chat state
+        webSocket.loop();
+        
+        lcd.clear();
+        lcd.print("Room: " + roomId.substring(0, 16));
+        lcd.setCursor(0, 1);
+        
+        if(messages.size() > 0) {
+          Message lastMsg = messages.back();
+          lcd.print(lastMsg.text.substring(0, 20));
+        } else {
+          lcd.print("No messages");
+        }
+        
+        // TODO: Add your button/audio logic here
+        
+        delay(100);
+        break;
+      }
   }
+}

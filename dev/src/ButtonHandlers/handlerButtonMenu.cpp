@@ -19,3 +19,18 @@ bool handlerButtonMenu(){
   }
   return true;
 }
+bool handleJoinCreateOption(){
+  if (digitalRead(BTN1) == LOW) {
+    status = 9;
+    delay(500);
+    return false;
+  }
+
+  if (digitalRead(BTN2) == LOW) {
+    status = 10;
+    delay(500);
+    return false;
+  }
+
+  return true;
+}
