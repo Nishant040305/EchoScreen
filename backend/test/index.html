@@ -3,202 +3,766 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Morse Chat Test Interface</title>
+    <title>EchoScreen - Real-Time Transcription</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .gradient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: float-orb 20s infinite ease-in-out;
+            opacity: 0.4;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #4f46e5, transparent);
+            top: -10%;
+            left: -10%;
+        }
+
+        .orb-2 {
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, #7c3aed, transparent);
+            bottom: 10%;
+            right: -5%;
+            animation-delay: 7s;
+        }
+
+        @keyframes float-orb {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(50px, -80px) scale(1.1); }
+            66% { transform: translate(-30px, 50px) scale(0.9); }
+        }
+
         .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fade-in-down 0.6s ease;
+        }
+
+        @keyframes fade-in-down {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            animation: fade-in-up 0.8s ease;
+        }
+
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .sidebar {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 1.5rem;
         }
-        .room-info {
-            background: #f0f0f0;
-            padding: 15px;
-            border-radius: 5px;
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
         }
-        .messages {
-            height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin: 10px 0;
+
+        .card:hover {
+            border-color: rgba(124, 58, 237, 0.5);
+            box-shadow: 0 10px 40px rgba(124, 58, 237, 0.2);
         }
-        .controls {
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
             display: flex;
-            gap: 10px;
             align-items: center;
+            gap: 0.5rem;
         }
-        .button-group {
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #10b981;
+        }
+
+        .status-dot.disconnected {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .info-item {
             display: flex;
-            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        button {
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #818cf8;
+            font-family: 'Courier New', monospace;
             cursor: pointer;
         }
+
+        .info-value:hover {
+            color: #c084fc;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        button {
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-record {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.8); }
+        }
+
+        .btn-record:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
         button:disabled {
-            background: #ccc;
+            opacity: 0.5;
+            cursor: not-allowed;
         }
+
+        .messages-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 200px);
+            overflow: hidden;
+        }
+
+        .messages-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .messages-header h3 {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .message-count {
+            background: rgba(99, 102, 241, 0.3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+
+        .messages-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .messages-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .messages-list::-webkit-scrollbar-thumb {
+            background: rgba(124, 58, 237, 0.5);
+            border-radius: 10px;
+        }
+
         .message {
-            margin: 5px 0;
-            padding: 5px;
-            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 1.25rem;
+            border-radius: 16px;
+            border-left: 4px solid #8b5cf6;
+            animation: slide-in 0.4s ease;
+            transition: all 0.3s ease;
         }
-        .message.transcription {
-            background: #e3f2fd;
+
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .message:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateX(5px);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .message-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .message-time {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .message-text {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: rgba(26, 31, 58, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .messages-container {
+                height: 500px;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+    </div>
 
-    <script type="text/babel">
-        function App() {
-            const [socket, setSocket] = React.useState(null);
-            const [userId, setUserId] = React.useState(null);
-            const [roomId, setRoomId] = React.useState(null);
-            const [isCreator, setIsCreator] = React.useState(false);
-            const [messages, setMessages] = React.useState([]);
-            const [isRecording, setIsRecording] = React.useState(false);
-            const [mediaRecorder, setMediaRecorder] = React.useState(null);
+    <div class="container">
+        <div class="header">
+            <h1 class="logo">🔊 EchoScreen</h1>
+            <p class="subtitle">Real-Time Transcription Interface</p>
+        </div>
 
-            React.useEffect(() => {
-                // Connect to socket.io server
-                const newSocket = io('https://esp-32-morse-based-chat-application.onrender.com');
-                setSocket(newSocket);
-
-                newSocket.on('userId', (id) => {
-                    setUserId(id);
-                });
-
-                newSocket.on('roomId', (id) => {
-                    setRoomId(id);
-                    setIsCreator(true);
-                });
-
-                newSocket.on('audioTranscription', (data) => {
-                    setMessages(prev => [...prev, {
-                        type: 'transcription',
-                        text: data,
-                        // utterances: data.utterances
-                    }]);
-                });
-
-                newSocket.emit('connectUser');
-
-                return () => newSocket.close();
-            }, []);
-
-            const createRoom = () => {
-                socket.emit('createRoom', userId);
-            };
-
-            const joinRoom = () => {
-                const roomToJoin = prompt('Enter room ID:');
-                if (roomToJoin) {
-                    socket.emit('joinRoom', { roomId: roomToJoin, userId });
-                    setRoomId(roomToJoin);
-                }
-            };
-
-            const startRecording = async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    const recorder = new MediaRecorder(stream);
-                    const audioChunks = [];
-
-                    recorder.ondataavailable = (event) => {
-                        audioChunks.push(event.data);
-                    };
-
-                    recorder.onstop = async () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                        const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
-                        
-                        // Convert to base64 for transmission
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                            socket.emit('audioTranscription', {
-                                roomId,
-                                userId,
-                                audioFile: reader.result
-                            });
-                        };
-                        reader.readAsDataURL(audioFile);
-                    };
-
-                    recorder.start();
-                    setMediaRecorder(recorder);
-                    setIsRecording(true);
-                } catch (error) {
-                    console.error('Error accessing microphone:', error);
-                    alert('Error accessing microphone');
-                }
-            };
-
-            const stopRecording = () => {
-                if (mediaRecorder && isRecording) {
-                    mediaRecorder.stop();
-                    setIsRecording(false);
-                    setMediaRecorder(null);
-                }
-            };
-
-            return (
-                <div className="container">
-                    <div className="room-info">
-                        <h2>Morse Chat Test Interface</h2>
-                        <p>Your ID: {userId || 'Connecting...'}</p>
-                        <p>Room ID: {roomId || 'Not in a room'}</p>
-                        <p>Role: {isCreator ? 'Creator' : 'Participant'}</p>
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-title">
+                        <span>📡</span> Connection Status
                     </div>
-
-                    <div className="controls">
-                        {!roomId && (
-                            <div className="button-group">
-                                <button onClick={createRoom}>Create Room</button>
-                                <button onClick={joinRoom}>Join Room</button>
-                            </div>
-                        )}
-                        
-                        {roomId && isCreator && (
-                            <button 
-                                onClick={isRecording ? stopRecording : startRecording}
-                                style={{ background: isRecording ? '#dc3545' : '#007bff' }}
-                            >
-                                {isRecording ? 'Stop Recording' : 'Start Recording'}
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="messages">
-                        {messages.map((msg, index) => (
-                            <div key={index} className={`message ${msg.type}`}>
-                                <p><strong>Transcription:</strong> {msg.text}</p>
-                                {msg.utterances && msg.utterances.map((utterance, i) => (
-                                    <p key={i}><strong>Speaker {utterance.speaker}:</strong> {utterance.text}</p>
-                                ))}
-                            </div>
-                        ))}
+                    <div class="status-badge">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText">Connecting...</span>
                     </div>
                 </div>
-            );
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>👤</span> Session Info
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">User ID</span>
+                        <span class="info-value" id="userIdDisplay" onclick="copyToClipboard(this.textContent)" title="Click to copy">•••</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Room ID</span>
+                        <span class="info-value" id="roomIdDisplay" onclick="copyToClipboard(this.textContent)" title="Click to copy">Not joined</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Role</span>
+                        <span class="info-value" id="roleDisplay">—</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>🎬</span> Actions
+                    </div>
+                    <div class="button-group" id="roomButtons">
+                        <button class="btn-primary" onclick="createRoom()" id="createBtn">
+                            ➕ Create Room
+                        </button>
+                        <button class="btn-secondary" onclick="showJoinModal()" id="joinBtn">
+                            🚪 Join Room
+                        </button>
+                    </div>
+                    <div class="button-group hidden" id="recordButtons">
+                        <button class="btn-record" onclick="toggleRecording()" id="recordBtn">
+                            🎤 Start Recording
+                        </button>
+                    </div>
+                    <div class="button-group hidden" id="participantInfo">
+                        <div style="background: rgba(99, 102, 241, 0.2); padding: 1rem; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">👂</div>
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;">Listening Mode</div>
+                            <div style="font-size: 0.9rem; opacity: 0.8; line-height: 1.5;">You're connected as a participant. Transcriptions will appear automatically when the creator speaks.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="messages-container">
+                <div class="messages-header">
+                    <h3>
+                        <span>💬</span> Transcriptions
+                    </h3>
+                    <span class="message-count" id="messageCount">0</span>
+                </div>
+                <div class="messages-list" id="messagesList">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎙️</div>
+                        <h3>No transcriptions yet</h3>
+                        <p>Start recording to see real-time transcriptions appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="joinModal" onclick="hideJoinModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <h3>🚪 Join Room</h3>
+            <p style="margin-bottom: 1rem; opacity: 0.8">Enter the room ID to join</p>
+            <input type="text" id="joinRoomInput" placeholder="Enter Room ID" onkeypress="if(event.key==='Enter') handleJoinRoom()">
+            <div class="modal-buttons">
+                <button class="btn-primary" onclick="handleJoinRoom()" style="flex: 1">Join</button>
+                <button class="btn-secondary" onclick="hideJoinModal()" style="flex: 1">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let userId = null;
+        let roomId = null;
+        let isCreator = false;
+        let isRecording = false;
+        let mediaRecorder = null;
+        let messages = [];
+
+        // Initialize socket connection
+        socket = io('https://echoscreen.onrender.com');
+
+        socket.on('connect', () => {
+            updateStatus(true);
+            socket.emit('connectUser');
+        });
+
+        socket.on('disconnect', () => {
+            updateStatus(false);
+        });
+
+        socket.on('userId', (id) => {
+            userId = id;
+            document.getElementById('userIdDisplay').textContent = id.substring(0, 8);
+            enableButtons();
+        });
+
+        socket.on('roomId', (id) => {
+            roomId = id;
+            isCreator = true;
+            updateRoomDisplay();
+        });
+
+        socket.on('audioTranscription', (data) => {
+            addMessage(data);
+        });
+
+        function updateStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            
+            if (connected) {
+                dot.classList.add('connected');
+                dot.classList.remove('disconnected');
+                text.textContent = 'Connected';
+            } else {
+                dot.classList.remove('connected');
+                dot.classList.add('disconnected');
+                text.textContent = 'Disconnected';
+            }
         }
 
-        ReactDOM.render(<App />, document.getElementById('root'));
+        function enableButtons() {
+            document.getElementById('createBtn').disabled = false;
+            document.getElementById('joinBtn').disabled = false;
+        }
+
+        function createRoom() {
+            if (userId) {
+                socket.emit('createRoom', userId);
+            }
+        }
+
+        function showJoinModal() {
+            document.getElementById('joinModal').classList.remove('hidden');
+            document.getElementById('joinRoomInput').focus();
+        }
+
+        function hideJoinModal() {
+            document.getElementById('joinModal').classList.add('hidden');
+            document.getElementById('joinRoomInput').value = '';
+        }
+
+        function handleJoinRoom() {
+            const input = document.getElementById('joinRoomInput').value.trim();
+            if (input && userId) {
+                socket.emit('joinRoom', { roomId: input, userId });
+                roomId = input;
+                updateRoomDisplay();
+                hideJoinModal();
+            }
+        }
+
+        function updateRoomDisplay() {
+            document.getElementById('roomIdDisplay').textContent = roomId;
+            document.getElementById('roleDisplay').textContent = isCreator ? '👑 Creator' : '👥 Participant';
+            
+            document.getElementById('roomButtons').classList.add('hidden');
+            
+            if (isCreator) {
+                document.getElementById('recordButtons').classList.remove('hidden');
+                document.getElementById('participantInfo').classList.add('hidden');
+            } else {
+                document.getElementById('recordButtons').classList.add('hidden');
+                document.getElementById('participantInfo').classList.remove('hidden');
+            }
+        }
+
+        async function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                const audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
+                    
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        socket.emit('audioTranscription', {
+                            roomId,
+                            userId,
+                            audioFile: reader.result
+                        });
+                    };
+                    reader.readAsDataURL(audioFile);
+
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                
+                const btn = document.getElementById('recordBtn');
+                btn.textContent = '⏹ Stop Recording';
+                btn.classList.remove('btn-record');
+                btn.classList.add('btn-stop');
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                alert('Error accessing microphone. Please check permissions.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                const btn = document.getElementById('recordBtn');
+                btn.textContent = '🎤 Start Recording';
+                btn.classList.remove('btn-stop');
+                btn.classList.add('btn-record');
+            }
+        }
+
+        function addMessage(text) {
+            messages.push({
+                text: text,
+                timestamp: new Date()
+            });
+
+            const messagesList = document.getElementById('messagesList');
+            
+            if (messages.length === 1) {
+                messagesList.innerHTML = '';
+            }
+
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message';
+            messageEl.innerHTML = `
+                <div class="message-header">
+                    <span class="message-type">
+                        <span>📝</span> Transcription
+                    </span>
+                    <span class="message-time">${formatTime(messages[messages.length - 1].timestamp)}</span>
+                </div>
+                <div class="message-text">${text}</div>
+            `;
+            
+            messagesList.appendChild(messageEl);
+            messagesList.scrollTop = messagesList.scrollHeight;
+            
+            document.getElementById('messageCount').textContent = messages.length;
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit'
+            });
+        }
+
+        function copyToClipboard(text) {
+            if (text !== '•••' && text !== 'Not joined' && text !== '—') {
+                navigator.clipboard.writeText(text);
+            }
+        }
     </script>
 </body>
 </html>

@@ -12,7 +12,7 @@ String roomId = "";
 bool socketConnected = false;
 std::vector<Message> messages;
 bool isCreator = false;
-String URL = "esp-32-morse-based-chat-application.onrender.com";
+String URL = "echoscreen.onrender.com";
 WebSocketsClient webSocket;
 String trans = "";
 bool newMR = false;
