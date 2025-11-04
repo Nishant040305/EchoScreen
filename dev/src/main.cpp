@@ -14,7 +14,7 @@
 #include <showJoinCreateOption.h>
 #include <displayMessage.h>
 #include <AudioHandler.h>
-
+#include <preRecordWIFIPASS.h>
 LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 String code = "";
 bool isRoomCreator = false; // Track if user created the room
@@ -28,7 +28,7 @@ void setup()
   pinMode(BTN2, INPUT_PULLUP);
   pinMode(BTN3, INPUT_PULLUP);
   pinMode(BTN4, INPUT_PULLUP);
-  
+
   showLandingScreen();
 }
 
@@ -37,13 +37,14 @@ void loop()
   if (socketConnected)
   {
     webSocket.loop();
-    
+
     // Process audio chunks if recording
-    if (audioHandler.getIsRecording()) {
+    if (audioHandler.getIsRecording())
+    {
       audioHandler.processAudioChunk();
     }
   }
-  
+
   switch (status)
   {
   case 0: // Landing Screen
@@ -51,16 +52,16 @@ void loop()
     while (handlerButtonMenu())
       ;
     break;
-    
+
   case 1:
     setupFindDevice();
     break;
-    
+
   case 3: // Network List
     displayNetworks();
     handleNetworkMenu();
     break;
-    
+
   case 4:
     if (!NetworkSSID)
     {
@@ -71,15 +72,18 @@ void loop()
       NetworkEntry entry = *NetworkSSID;
       Serial.printf("SSID: %s\n", entry.ssid.c_str());
       lcd.clear();
-      lcd.print("Press BTN1 for Pass");
-      codeInputinit(false);
-      while (handleCodeInput(code, 8))
-        ;
+      if (!set_credentials_if_known(entry.ssid, code))
+      {
+        lcd.print("Press BTN1 for Pass");
+        codeInputinit(false);
+        while (handleCodeInput(code, 8))
+          ;
+      }
       status = 5;
       delay(1000);
     }
     break;
-    
+
   case 5:
     if (!NetworkSSID)
     {
@@ -131,7 +135,7 @@ void loop()
       }
     }
     break;
-    
+
   case 6:
   { // WebSocket Connection
     lcd.clear();
@@ -140,8 +144,10 @@ void loop()
     lcd.print("server...");
 
     Serial.println("Initializing WebSocket connection...");
+    IPAddress serverIP(10, 79, 73, 187);
+    webSocket.begin(serverIP, 4000, "/socket.io/?EIO=4&transport=websocket");
 
-    webSocket.beginSSL(URL, 443, "/socket.io/?EIO=4&transport=websocket");
+    // webSocket.beginSSL(URL, 443, "/socket.io/?EIO=4&transport=websocket");
     webSocket.onEvent(webSocketEvent);
     webSocket.setReconnectInterval(5000);
     webSocket.enableHeartbeat(15000, 3000, 2);
@@ -209,7 +215,7 @@ void loop()
     }
     break;
   }
-  
+
   case 7:
     webSocket.loop();
     lcd.clear();
@@ -227,7 +233,7 @@ void loop()
     }
     delay(500);
     break;
-    
+
   case 8:
   {
     webSocket.loop();
@@ -336,19 +342,23 @@ void loop()
   case 13:
   {
     // Initialize audio when entering room
-    if (!audioHandler.init()) {
+    if (!audioHandler.init())
+    {
       Serial.println("Failed to initialize audio");
     }
-    
+
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Room: " + roomId.substring(0, 16));
     lcd.setCursor(0, 1);
-    
+
     // Different options based on creator status
-    if (isRoomCreator) {
+    if (isRoomCreator)
+    {
       lcd.print("BTN1:Rec BTN3:Msgs");
-    } else {
+    }
+    else
+    {
       lcd.print("BTN3: View messages");
     }
 
@@ -359,28 +369,30 @@ void loop()
     while (true)
     {
       webSocket.loop();
-      
+
       // Process audio if recording
-      if (audioHandler.getIsRecording()) {
+      if (audioHandler.getIsRecording())
+      {
         audioHandler.processAudioChunk();
       }
-
       if (!viewingMessages)
       {
         unsigned long currentTime = millis();
-        
         // BTN1: Toggle recording (only for creator)
-        if (isRoomCreator && digitalRead(BTN1) == LOW && 
+        if (isRoomCreator && digitalRead(BTN1) == LOW &&
             (currentTime - lastButtonCheck) > buttonDebounce)
         {
           lastButtonCheck = currentTime;
-          
-          if (!audioHandler.getIsRecording()) {
+
+          if (!audioHandler.getIsRecording())
+          {
             audioHandler.startRecording();
             lcd.setCursor(0, 2);
-            lcd.print("🔴 Recording...     ");
+            lcd.print("Recording...     ");
             Serial.println("Started recording");
-          } else {
+          }
+          else
+          {
             audioHandler.stopRecording();
             lcd.setCursor(0, 2);
             lcd.print("                    ");
@@ -388,9 +400,9 @@ void loop()
           }
           delay(300);
         }
-        
+
         // BTN3: Enter message view
-        if (digitalRead(BTN3) == LOW && 
+        if (digitalRead(BTN3) == LOW &&
             (currentTime - lastButtonCheck) > buttonDebounce)
         {
           lastButtonCheck = currentTime;
@@ -400,19 +412,20 @@ void loop()
         }
 
         // BTN4: Exit room
-        if (digitalRead(BTN4) == LOW && 
+        if (digitalRead(BTN4) == LOW &&
             (currentTime - lastButtonCheck) > buttonDebounce)
         {
           lastButtonCheck = currentTime;
-          
+
           // Stop recording if active
-          if (audioHandler.getIsRecording()) {
+          if (audioHandler.getIsRecording())
+          {
             audioHandler.stopRecording();
           }
-          
+
           // Cleanup audio
           audioHandler.cleanup();
-          
+
           isRoomCreator = false;
           status = 8;
           delay(200);
@@ -425,7 +438,7 @@ void loop()
         handleScrollDown();
         handleNewMessage();
         renderMessages();
-        
+
         if (handleExitMessages())
         {
           viewingMessages = false;
@@ -433,13 +446,16 @@ void loop()
           lcd.setCursor(0, 0);
           lcd.print("Room: " + roomId.substring(0, 16));
           lcd.setCursor(0, 1);
-          
-          if (isRoomCreator) {
+
+          if (isRoomCreator)
+          {
             lcd.print("BTN1:Rec BTN3:Msgs");
-          } else {
+          }
+          else
+          {
             lcd.print("BTN3: View messages");
           }
-          
+
           lcd.setCursor(0, 3);
           lcd.print("BTN4: Exit Room");
         }

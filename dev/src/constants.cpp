@@ -11,7 +11,7 @@ String roomId = "";
 bool socketConnected = false;
 std::vector<Message> messages;
 bool isCreator = false;
-String URL = "echoscreen.onrender.com";
+String URL = "10.79.73.187:4000";
 WebSocketsClient webSocket;
 String trans = "";
 bool newMR = false;
