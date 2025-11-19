@@ -1,18 +1,4 @@
-#include <constants.h>
-#include <LiquidCrystal.h>
-#include <vector>
-#include <WiFi.h>
-#include <esp_now.h>
-#include <showLandingScreen.h>
-#include <handlerButtonMenu.h>
-#include <handlButtonNetworkMenu.h>
-#include <setupFindDevice.h>
-#include <handleCodeInput.h>
-#include <SendRecieveHandler.h>
-#include <sendConnectedUser.h>
-#include <webSocketEvent.h>
-#include <showJoinCreateOption.h>
-#include <displayMessage.h>
+#include<headerFiles.h>
 
 LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 // LiquidCrystal lcd(18, 19, 21, 16, 17, 5);
@@ -27,12 +13,16 @@ void setup()
   pinMode(BTN3, INPUT_PULLUP);
   pinMode(BTN4, INPUT_PULLUP);
   showLandingScreen();
+  initI2SMic();
 }
 void loop()
 {
   if (socketConnected)
   {
     webSocket.loop();
+  }
+  if(javaSocketConnected){
+    handleJavaWebSocketLoop();
   }
   switch (status)
   {
@@ -62,11 +52,12 @@ void loop()
       Serial.printf("SSID: %s\n", entry.ssid.c_str());
       // Serial.printf("SSID: %s\n",entry.mac.c_str());
       lcd.clear();
-      lcd.print("Press BTN1 for Pass");
-      // while(handleCodeInput(code,8,false));
-      codeInputinit(false);
-      while (handleCodeInput(code, 8))
-        ;
+      if (!set_credentials_if_known(entry.ssid, code))
+      {
+        lcd.print("Press BTN1 for Pass");
+        codeInputinit(false);
+        while (handleCodeInput(code, 8));
+      }
       status = 5;
       delay(1000);
     }
@@ -332,62 +323,87 @@ void loop()
       delay(2000);
       status = 8; // Go back to menu
     }
+    startJavaWebSocket();
     break;
   }
 
-  case 13:
+case 13:
+{
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Room: " + roomId.substring(0, 16));
+  lcd.setCursor(0, 1);
+  lcd.print("BTN3: View Msgs");
+  lcd.setCursor(0, 2);
+  lcd.print("BTN4: Exit Room");
+
+  bool viewingMessages = false;
+  bool exitRoom = false;
+
+  Serial.println("🎙️ Entered Room: Audio streaming + message control active.");
+
+  // Start audio (if not already initialized)
+  if (!javaSocketConnected&&isCreator) {
+    startJavaWebSocket();
+  }
+
+  while (!exitRoom)
   {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Room: " + roomId.substring(0, 16));
-    lcd.setCursor(0, 1);
-    lcd.print("BTN3: View messages");
-
-    bool viewingMessages = false;
-
-    while (true)
-    {
-      webSocket.loop();
-
-      if (!viewingMessages)
-      {
-        // BTN3: Enter message view
-        if (digitalRead(BTN3) == LOW)
-        {
-          viewingMessages = true;
-          initMessageDisplay();
-          delay(300);
-        }
-
-        // BTN4: Exit room
-        if (digitalRead(BTN4) == LOW)
-        {
-          status = 8;
-          delay(200);
-          break;
-        }
-      }
-      else
-      {
-        handleScrollUp();
-        handleScrollDown();
-        handleNewMessage();
-        renderMessages();
-        if (handleExitMessages())
-        {
-          viewingMessages = false;
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("Room: " + roomId.substring(0, 16));
-          lcd.setCursor(0, 1);
-          lcd.print("BTN3: View messages");
-          lcd.print("BTN4: Exit Room");
-        }
-      }
-
-      delay(50);
+    
+    webSocket.loop();
+    if(isCreator){
+      handleJavaWebSocketLoop();
+      sendAudioToJava();
     }
-    break;
+      
+    if (!viewingMessages)
+    {
+      if (digitalRead(BTN3) == LOW)
+      {
+        viewingMessages = true;
+        initMessageDisplay();
+        lcd.clear();
+        delay(300);
+      }
+
+      // BTN4 → exit room
+      if (digitalRead(BTN4) == LOW)
+      {
+        exitRoom = true;
+        status = 8;  // return to main menu
+        delay(200);
+        break;
+      }
+    }
+    else
+    {
+      handleScrollUp();
+      handleScrollDown();
+      handleNewMessage();
+      renderMessages();
+
+      if (digitalRead(BTN4) == LOW || handleExitMessages())
+      {
+        viewingMessages = false;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Room: " + roomId.substring(0, 16));
+        lcd.setCursor(0, 1);
+        lcd.print("BTN3: View Msgs");
+        lcd.setCursor(0, 2);
+        lcd.print("BTN4: Exit Room");
+        delay(300);
+      }
+    }
+
+    delay(10);
+  }
+
+  lcd.clear();
+  lcd.print("Leaving room...");
+  delay(500);
+  Serial.println("🚪 Exiting Room, stopping audio streaming...");
+  break;
   }
   }
 }

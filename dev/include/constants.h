@@ -8,7 +8,7 @@
 const int BTN1 = 12;
 const int BTN2 = 13;
 const int BTN3 = 14;
-const int BTN4 = 27;
+const int BTN4 = 23;
 // LCD
 const int LCD_D7 = 4;
 const int LCD_D5 = 15;
@@ -17,9 +17,9 @@ const int LCD_D4 = 21;
 const int LCD_RS = 18;
 const int LCD_E = 19;
 // microphone i2s
-const int I2S_SCK = 32;
-const int I2S_SD = 34;
-const int I2S_WS = 35;
+const int I2S_SCK = 27;
+const int I2S_SD = 26;
+const int I2S_WS = 25;
 
 typedef struct NetworkEntry
 {

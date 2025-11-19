@@ -22,18 +22,7 @@ cd lib
 git clone https://github.com/Links2004/arduinoWebSockets.git 
 ```
 
-### 3. SocketIO Library
-
-The SocketIO library is a library for the Arduino that allows you to use a SocketIO server.
-
-To install use the following command:
-
-```bash
-cd lib
-git clone https://github.com/timum-viw/socket.io-client.git
-```
-
-### 4. ArduinoJson Library
+### 3. ArduinoJson Library
 
 The ArduinoJson library is a library for the Arduino that allows you to use a JSON parser and serializer.
 
